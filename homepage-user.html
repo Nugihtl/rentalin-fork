@@ -5,41 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rentalin - Sewa Apa Saja</title>
   
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
 
-  <header class="navbar">
-    <div class="container nav-container">
-      
-      <a href="homepage-user.html" class="nav-logo">
-        <img src="assets/img/logo/logo 2.png" alt="Rentalin" class="logo-img">
-      </a>
-
-      <div class="nav-search">
-        <img src="assets/icons/search.png" alt="Cari" class="search-icon">
-        <input type="text" placeholder="Search">
+  <nav class="navbar">
+      <div class="nav-left">
+          <div class="logo">
+              <img src="assets/img/logo/logo 2.png" alt="Rentalin Logo" class="logo-img">
+          </div>
       </div>
-
-      <div class="nav-actions">
-        <button class="icon-btn"><img src="assets/icons/bell.png" alt="Notifikasi"></button>
-        <button class="icon-btn"><img src="assets/icons/message-text.png" alt="Pesan"></button>
-        <button class="icon-btn"><img src="assets/icons/cart.png" alt="Keranjang"></button>
-        
-        <div class="divider"></div>
-      
-        <a href="#" class="btn-toko">
-          <img src="assets/icons/shop.png" alt="Toko" width="18"> Toko
-        </a>
-
-        <a href="profile.html" class="user-profile">
-          <img src="assets/img/profile/user-photo-profile.png" alt="Foto Profil" class="avatar">
-          <span class="user-name">Nugra Hasahatan</span>
-        </a>
+      <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search">
       </div>
-
-    </div>
-  </header>
+      <div class="nav-right">
+          <div class="icon-group">
+              <button class="icon-btn icon-bell">🔔</button>
+              <button class="icon-btn icon-chat">💬</button>
+              <button class="icon-btn icon-cart">🛒</button>
+          </div>
+          <div class="nav-divider"></div>
+          <button class="toko-btn" onclick="window.location.href='page_toko.html';">
+              <div class="toko-icon-wrapper">🏪</div>
+              <span>Toko</span>
+          </button>
+          <div class="profile-group">
+              <img src="assets/img/profile/user-photo-profile.png" alt="Profile" class="profile-img">
+              <span class="profile-name">Nugra Hasahatan</span>
+          </div>
+      </div>
+  </nav>
 
   <main>
     
@@ -329,54 +325,45 @@
 
   </main>
 
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-top">
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="logo">
+                    <img src="assets/img/logo/logo 2.png" alt="Rentalin Logo" class="logo-img">
+                </div>
+                <p class="footer-desc">Platform sewa menyewa barang yang aman, mudah, dan terpercaya</p>
+            </div>
+            
+            <div class="footer-links-col">
+                <h4 class="footer-title">Quick Links</h4>
+                <ul class="footer-list">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Riwayat</a></li>
+                    <li><a href="#">Kontak</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-contact-col">
+                <h4 class="footer-title">Hubungi Kami</h4>
+                <ul class="footer-list contact-list">
+                    <li><span class="contact-icon icon-phone">📞</span> +62 123 456 987</li>
+                    <li><span class="contact-icon icon-email">✉️</span> support@rentalin.com</li>
+                    <li><span class="contact-icon icon-location">📍</span> Jl. Cibubur No. 123</li>
+                </ul>
+            </div>
+        </div>
         
-        <div class="footer-brand">
-          <img src="assets/img/logo/logo 2.png" alt="Rentalin" class="footer-logo">
-          <p class="footer-desc">Platform sewa menyewa barang yang aman, mudah, dan terpercaya</p>
+        <div class="footer-bottom">
+            <p>© 2026 Rentalin. All rights reserved</p>
+            <div class="social-icons">
+                <a href="#" class="icon-ig">📷</a> 
+                <a href="#" class="icon-wa">💬</a> 
+                <a href="#" class="icon-fb">📘</a> 
+            </div>
         </div>
-
-        <div class="footer-links">
-          <h4 class="footer-heading">Quick Links</h4>
-          <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Riwayat</a></li>
-            <li><a href="#">Kontak</a></li>
-          </ul>
-        </div>
-
-        <div class="footer-contact">
-          <h4 class="footer-heading">Hubungi Kami</h4>
-          <ul>
-            <li>
-              <img src="assets/icons/phone.png" alt="Telepon">
-              <span>+62 123 456 987</span>
-            </li>
-            <li>
-              <img src="assets/icons/email.png" alt="Email">
-              <span>support@rentalin.com</span>
-            </li>
-            <li>
-              <img src="assets/icons/location.png" alt="Lokasi">
-              <span>Jl. Cibubur No. 123</span>
-            </li>
-          </ul>
-        </div>
-
-      </div>
-
-      <div class="footer-bottom">
-        <p class="copyright">© 2026 Rentalin. All rights reserved</p>
-        <div class="social-icons">
-          <a href="#"><img src="assets/icons/instagram.png" alt="Instagram"></a>
-          <a href="#"><img src="assets/icons/whatsapp.png" alt="WhatsApp"></a>
-          <a href="#"><img src="assets/icons/facebook.png" alt="Facebook"></a>
-        </div>
-      </div>
     </div>
-  </footer>
+</footer>
 
 </body>
 </html>
