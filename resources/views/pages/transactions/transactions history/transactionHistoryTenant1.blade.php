@@ -408,13 +408,17 @@
 
             </div>
 
-            <div class="border-t border-[#C3DAFE] pt-[11px] sm:pt-[12px] flex justify-end gap-[5px] sm:gap-[10px] flex-wrap">
+            <div class="border-t border-[#C3DAFE] pt-[11px] sm:pt-[12px] grid grid-cols-3 sm:flex sm:justify-end gap-[5px] sm:gap-[10px]">
 
-                <button class="h-[36px] sm:h-[34px] px-[16px] sm:px-[24px] rounded-[8px] border border-[#34699A] bg-white text-[#34699A] text-[12px] font-medium">
+                <button class="h-[36px] sm:h-[34px] sm:px-[20px] rounded-[8px] bg-[#34699A] text-white text-[12px] font-medium leading-[1.35]">
+                    Perpanjang Sewa
+                </button>
+
+                <button class="h-[36px] sm:h-[34px] sm:px-[20px] rounded-[8px] border border-[#34699A] bg-white text-[#34699A] text-[12px] font-medium leading-[1.35]">
                     Detail Transaksi
                 </button>
 
-                <button class="h-[36px] sm:h-[34px] px-[16px] sm:px-[24px] rounded-[8px] border border-[#34699A] bg-white text-[#34699A] text-[12px] font-medium">
+                <button class="h-[36px] sm:h-[34px] sm:px-[20px] rounded-[8px] border border-[#34699A] bg-white text-[#34699A] text-[12px] font-medium leading-[1.35]">
                     Hubungi Pemilik
                 </button>
 
@@ -423,7 +427,7 @@
             <div class="mt-[10px] bg-[#DBEAFE] text-[#34699A] rounded-[8px] px-[10px] lg:px-[12px] py-[9px] lg:py-[8px] text-[11px] lg:text-[12px] font-medium lg:font-semibold flex items-start gap-[8px] leading-[17px] lg:leading-normal">
                 <span class="text-[16px] leading-none">ℹ️</span>
                 <p>
-                    Gunakan Hubungi Pemilik jika ingin koordinasi selama masa sewa atau menanyakan pengembalian barang.
+                    Klik Perpanjang Sewa jika ingin menambah durasi sewa. Hubungi Pemilik untuk koordinasi selama masa sewa.
                 </p>
             </div>
 
