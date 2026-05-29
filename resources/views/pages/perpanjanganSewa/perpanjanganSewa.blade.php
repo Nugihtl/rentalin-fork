@@ -188,7 +188,7 @@
         <section class="bg-white border border-[#E5EAF0] rounded-[8px] px-[14px] sm:px-[24px] py-[16px] sm:py-[22px] shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14)] mb-[14px]">
 
             <div class="flex items-center justify-between gap-[12px] mb-[22px]">
-                <h2 class="text-[18px] sm:text-[22px] font-bold">
+                <h2 class="text-[16px] sm:text-[20px] font-bold">
                     Barang yang Disewa
                 </h2>
 
@@ -212,7 +212,7 @@
                         >
 
                         <div class="min-w-0">
-                            <h3 class="text-[14px] sm:text-[19px] font-bold leading-[22px]">
+                            <h3 class="text-[12px] sm:text-[18px] font-semibold leading-[22px]">
                                 Kompor Listrik Portable
                             </h3>
 
@@ -294,11 +294,11 @@
         <!-- ================= SECTION 2 ================= -->
         <section class="bg-white border border-[#E5EAF0] rounded-[8px] px-[14px] sm:px-[24px] py-[16px] sm:py-[18px] shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14)] mb-[14px]">
 
-            <h2 class="text-[15px] sm:text-[17px] font-bold">
+            <h2 class="text-[16px] sm:text-[20px] font-semibold">
                 Pilih Durasi Perpanjangan
             </h2>
 
-            <p class="text-[12px] text-[#696969] mt-[6px] mb-[20px]">
+            <p class="text-[12px] sm:text-[14px] text-[#696969] mt-[6px] mb-[20px]">
                 Pilih paket cepat atau atur tanggal secara manual:
             </p>
 
@@ -415,7 +415,7 @@
         <!-- ================= SECTION 3 ================= -->
         <section class="bg-white border border-[#E5EAF0] rounded-[8px] px-[14px] sm:px-[24px] py-[16px] sm:py-[18px] shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14)] mb-[14px]">
 
-            <h2 class="text-[15px] sm:text-[17px] font-bold mb-[14px]">
+            <h2 class="text-[16px] sm:text-[20px] font-semibold mb-[14px]">
                 Catatan (Opsional)
             </h2>
 
@@ -429,7 +429,7 @@
         <!-- ================= SECTION 4 ================= -->
         <section class="bg-white border border-[#E5EAF0] rounded-[8px] px-[14px] sm:px-[24px] py-[16px] sm:py-[18px] shadow-[0px_2px_4px_0px_rgba(0,0,0,0.14)]">
 
-            <h2 class="text-[15px] sm:text-[17px] font-bold mb-[20px]">
+            <h2 class="text-[16px] sm:text-[20px] font-semibold mb-[20px]">
                 Ringkasan Pembayaran
             </h2>
 
