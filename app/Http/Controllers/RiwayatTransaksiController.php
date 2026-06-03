@@ -46,7 +46,7 @@ class RiwayatTransaksiController extends Controller
 
         $transaksis = $query->latest()->paginate(5)->withQueryString();
 
-        return view('pages.transactions.transactions history.riwayatTransaksiPenyewa', compact(
+        return view('pages.transactions.transactions-history.riwayatTransaksiPenyewa', compact(
             'transaksis',
             'filters',
             'statusAktif'
@@ -95,7 +95,7 @@ class RiwayatTransaksiController extends Controller
 
         $transaksis = $query->latest()->paginate(5)->withQueryString();
 
-        return view('pages.transactions.transactions history.riwayatTransaksiPemilik', compact(
+return view('pages.transactions.transactions-history.riwayatTransaksiPenyewa', compact(
             'transaksis',
             'filters',
             'statusAktif'
@@ -107,7 +107,8 @@ class RiwayatTransaksiController extends Controller
     {
         $transaksi = Transaksi::findOrFail($id);
 
-        return view('pages.transactions.transactions detail.detailTransaksi', compact('transaksi'));    }
+        return view('pages.transactions.transactions-detail.detailTransaksi', compact('transaksi'));
+    }
 
     // Penyewa - konfirmasi Penerimaan
     public function formKonfirmasiPenerimaan($id)
@@ -179,7 +180,7 @@ class RiwayatTransaksiController extends Controller
     {
         $transaksi = Transaksi::findOrFail($id);
 
-        return view('pages.confirmation.konfirmasiPengriman', compact('transaksi'));    }
+        return view('pages.confirmation.konfirmasiPengiriman', compact('transaksi'));    }
 
     public function simpanKonfirmasiPengiriman(Request $request, $id)
     {
@@ -253,7 +254,8 @@ class RiwayatTransaksiController extends Controller
     {
         $transaksi = Transaksi::findOrFail($id);
 
-        return view('pages.damage submission.pengajuanKerusakan', compact('transaksi'));    }
+        return view('pages.damage-submission.pengajuanKerusakan', compact('transaksi'));
+    }
 
     public function simpanPengajuanKerusakan(Request $request, $id)
     {
@@ -280,5 +282,6 @@ class RiwayatTransaksiController extends Controller
     {
         $transaksi = Transaksi::findOrFail($id);
 
-        return view('pages.damage submission.klaimKerusakan', compact('transaksi'));    }
+        return view('pages.damage-submission.klaimKerusakan', compact('transaksi'));
+    }
 }
