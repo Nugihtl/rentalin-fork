@@ -4,6 +4,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RiwayatTransaksiController;
+use App\Http\Controllers\TokoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -197,6 +198,37 @@ Route::middleware('auth')->group(function () {
 
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| Buka Toko (Multi-step)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->prefix('toko/buat')->name('toko.')->group(function () {
+
+    // Halaman landing "Mulai sewakan barangmu"
+    Route::get('/mulai', [TokoController::class, 'mulai'])
+        ->name('mulai');
+
+    // Step 1: Info Toko
+    Route::get('/step-1',  [TokoController::class, 'step1'])
+        ->name('step1');
+    Route::post('/step-1', [TokoController::class, 'simpanStep1'])
+        ->name('step1.simpan');
+
+    // Step 2: Verifikasi
+    Route::get('/step-2',  [TokoController::class, 'step2'])
+        ->name('step2');
+    Route::post('/step-2', [TokoController::class, 'simpanStep2'])
+        ->name('step2.simpan');
+
+    // Selesai
+    Route::get('/selesai', [TokoController::class, 'selesai'])
+        ->name('selesai');
+
+});
+
 /*
 |--------------------------------------------------------------------------
 | Auth Routes
@@ -204,4 +236,3 @@ Route::middleware('auth')->group(function () {
 */
 
 require __DIR__.'/auth.php';
-
