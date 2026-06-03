@@ -18,13 +18,14 @@ class DatabaseSeeder extends Seeder
     {
             $this->call([
             CategorySeeder::class,
+            TransaksiSeeder::class,
         ]);
 
         User::create([
             'name' => 'Administrator',
             'email' => 'admin@rentalin.com',
             'password' => bcrypt('password'),
-            'role' => 'admin',
+            'role' => 'admin', 
         ]);
     }
 }
