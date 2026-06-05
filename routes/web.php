@@ -245,41 +245,31 @@ Route::prefix('transaksi/{id}')->name('transaksi.')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Buka Toko
-|--------------------------------------------------------------------------
-| Route store.bukaToko dibuat supaya navbar temanmu yang memakai
-| route('store.bukaToko') tidak error.
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/toko/mulai', [TokoController::class, 'mulai'])
-    ->name('store.bukaToko');
-
-/*
-|--------------------------------------------------------------------------
 | Buka Toko Multi-step
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->prefix('toko/buat')->name('toko.')->group(function () {
+// Halaman promosi - tidak perlu login
+Route::get('/toko/mulai', [TokoController::class, 'mulai'])
+    ->name('store.bukaToko');
 
-    Route::get('/mulai', [TokoController::class, 'mulai'])
-        ->name('mulai');
+// Step-step berikutnya perlu login
+Route::middleware('auth')->prefix('toko/buat')->name('store.')->group(function () {
 
     Route::get('/step-1', [TokoController::class, 'step1'])
-        ->name('step1');
+        ->name('step1Toko');
 
     Route::post('/step-1', [TokoController::class, 'simpanStep1'])
-        ->name('step1.simpan');
+        ->name('step1Toko.simpan');
 
     Route::get('/step-2', [TokoController::class, 'step2'])
-        ->name('step2');
+        ->name('step2Toko');
 
     Route::post('/step-2', [TokoController::class, 'simpanStep2'])
-        ->name('step2.simpan');
+        ->name('step2Toko.simpan');
 
     Route::get('/selesai', [TokoController::class, 'selesai'])
-        ->name('selesai');
+        ->name('selesaiToko');
 
 });
 

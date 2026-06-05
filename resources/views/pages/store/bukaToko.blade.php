@@ -31,7 +31,7 @@
             Buka toko gratis dan mulai dapatkan penghasilan dari barang yang tidak terpakai
         </p>
 
-        <a href="{{ route('toko.step1') }}"
+        <a href="{{ route('store.step1Toko') }}"
            style="display:inline-flex; align-items:center; gap:10px;
                   background:#3b5fa0; color:#fff; padding:16px 40px;
                   border-radius:8px; font-size:1.1rem; font-weight:600;
