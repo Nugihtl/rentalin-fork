@@ -25,7 +25,7 @@
 
         <section class="auth-right">
             <div class="auth-card">
-                <h2 class="auth-title">Sign In</h2>
+                <h2 class="auth-title">Daftar</h2>
 
                 <form method="POST" action="{{ route('register') }}" data-auth-form data-toast="Akun berhasil dibuat. Mengarahkan ke dashboard...">
                     @csrf

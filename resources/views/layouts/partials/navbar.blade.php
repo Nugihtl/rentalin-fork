@@ -1,6 +1,38 @@
 @php
-    $navbarUnreadCount = $navbarUnreadCount ?? 0;
-    $navbarNotifications = $navbarNotifications ?? collect();
+use App\Models\Notification;
+
+$navbarNotifications = collect();
+$navbarUnreadCount = 0;
+
+if (auth()->check()) {
+    try {
+
+        if (class_exists(Notification::class)) {
+
+            $navbarNotifications = Notification::where(
+                'user_id',
+                auth()->id()
+            )
+            ->latest()
+            ->take(5)
+            ->get();
+
+            $navbarUnreadCount = Notification::where(
+                'user_id',
+                auth()->id()
+            )
+            ->where('is_read', false)
+            ->count();
+
+        }
+
+    } catch (\Exception $e) {
+
+        $navbarNotifications = collect();
+        $navbarUnreadCount = 0;
+
+    }
+}
 @endphp
 
 <nav class="navbar">
@@ -19,21 +51,28 @@
 
 <div class="search-bar">
 
-    <span class="search-icon">🔍</span>
+    <form
+        action="{{ route('store') }}"
+        method="GET"
+        style="display:flex;width:100%;align-items:center;"
+    >
 
-    <form action="{{ route('store') }}" method="GET">
+        <span class="search-icon">🔍</span>
+
         <input
             type="text"
             name="search"
-            placeholder="Cari barang yang ingin disewa..."
+            placeholder="Cari barang..."
             value="{{ request('search') }}"
         >
+
     </form>
 
 </div>
 
 <div class="nav-right">
 
+@auth
     <div class="icon-group">
 
         <div class="notification-wrapper">
@@ -140,8 +179,33 @@
         <span>Toko</span>
 
     </a>
+@endauth
 
-    @auth
+@guest
+
+    <div class="guest-menu">
+
+        <a
+            href="{{ route('login') }}"
+            class="login-btn">
+
+            Masuk
+
+        </a>
+
+        <a
+            href="{{ route('register') }}"
+            class="register-btn">
+
+            Daftar
+
+        </a>
+
+    </div>
+
+@endguest
+
+@auth
 
     <div class="profile-dropdown">
 
@@ -204,8 +268,7 @@
     </div>
 
 </div>
-
-    @endauth
+@endauth
 
 </div>
 <script>
