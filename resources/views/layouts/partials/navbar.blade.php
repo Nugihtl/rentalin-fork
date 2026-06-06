@@ -1,31 +1,40 @@
 @php
-    $navbarUnreadCount = $navbarUnreadCount ?? 0;
-    $navbarNotifications = $navbarNotifications ?? collect();
-@endphp
+use App\Models\Notification;
 
 $navbarNotifications = collect();
 $navbarUnreadCount = 0;
 
-if(auth()->check()){
+if (auth()->check()) {
+    try {
 
-    $navbarNotifications = \App\Models\Notification::where(
-        'user_id',
-        auth()->id()
-    )
-    ->latest()
-    ->take(5)
-    ->get();
+        if (class_exists(Notification::class)) {
 
-    $navbarUnreadCount = \App\Models\Notification::where(
-        'user_id',
-        auth()->id()
-    )
-    ->where('is_read', false)
-    ->count();
+            $navbarNotifications = Notification::where(
+                'user_id',
+                auth()->id()
+            )
+            ->latest()
+            ->take(5)
+            ->get();
 
+            $navbarUnreadCount = Notification::where(
+                'user_id',
+                auth()->id()
+            )
+            ->where('is_read', false)
+            ->count();
+
+        }
+
+    } catch (\Exception $e) {
+
+        $navbarNotifications = collect();
+        $navbarUnreadCount = 0;
+
+    }
 }
-
 @endphp
+
 <nav class="navbar">
 
 <div class="nav-left">
@@ -42,15 +51,21 @@ if(auth()->check()){
 
 <div class="search-bar">
 
-    <span class="search-icon">🔍</span>
+    <form
+        action="{{ route('store') }}"
+        method="GET"
+        style="display:flex;width:100%;align-items:center;"
+    >
 
-    <form action="{{ route('store') }}" method="GET">
+        <span class="search-icon">🔍</span>
+
         <input
             type="text"
             name="search"
-            placeholder="Cari barang yang ingin disewa..."
+            placeholder="Cari barang..."
             value="{{ request('search') }}"
         >
+
     </form>
 
 </div>
