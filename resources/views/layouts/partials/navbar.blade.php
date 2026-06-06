@@ -72,6 +72,7 @@ if (auth()->check()) {
 
 <div class="nav-right">
 
+@auth
     <div class="icon-group">
 
         <div class="notification-wrapper">
@@ -178,8 +179,33 @@ if (auth()->check()) {
         <span>Toko</span>
 
     </a>
+@endauth
 
-    @auth
+@guest
+
+    <div class="guest-menu">
+
+        <a
+            href="{{ route('login') }}"
+            class="login-btn">
+
+            Masuk
+
+        </a>
+
+        <a
+            href="{{ route('register') }}"
+            class="register-btn">
+
+            Daftar
+
+        </a>
+
+    </div>
+
+@endguest
+
+@auth
 
     <div class="profile-dropdown">
 
@@ -242,8 +268,7 @@ if (auth()->check()) {
     </div>
 
 </div>
-
-    @endauth
+@endauth
 
 </div>
 <script>

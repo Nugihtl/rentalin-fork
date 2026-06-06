@@ -23,12 +23,5 @@ class DatabaseSeeder extends Seeder
             RentalSeeder::class,
             PaymentSeeder::class,
             DamageClaimSeeder::class,        ]);
-
-        User::create([
-            'name' => 'Administrator',
-            'email' => 'admin@rentalin.com',
-            'password' => bcrypt('password'),
-            'role' => 'admin', 
-        ]);
     }
 }

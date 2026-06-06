@@ -357,3 +357,13 @@ Route::get('/items/{item}/reviews', [App\Http\Controllers\ItemController::class,
 |--------------------------------------------------------------------------
 */
 require __DIR__.'/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| Payment Routes
+|--------------------------------------------------------------------------
+*/
+use App\Http\Controllers\PaymentController;
+
+Route::post('/midtrans/callback', [PaymentController::class, 'callback'])
+    ->name('midtrans.callback');
