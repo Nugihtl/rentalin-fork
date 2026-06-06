@@ -134,48 +134,55 @@
                     
                     <div class="flex items-center gap-6 mb-6">
                         <div class="flex items-center gap-2">
-                            <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                            <span class="text-2xl font-bold text-gray-900">5.0</span>
+                            <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                            </svg>
+                            <span class="text-2xl font-bold text-gray-900">{{ number_format($averageRating, 1) }}</span>
                             <span class="text-sm text-gray-500 mt-1">/ 5.0</span>
                         </div>
                         <div class="flex flex-wrap gap-2">
-                            <button class="px-4 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Semua (2)</button>
-                            <button class="px-4 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-600">5 bintang (2)</button>
-                            <button class="px-4 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-600">4 bintang (0)</button>
+                            <button class="px-4 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Semua ({{ $totalReviews }})</button>
                         </div>
                     </div>
 
                     <div class="space-y-4">
-                        <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs font-bold">CA</div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">Cap America</p>
-                                        <div class="flex text-yellow-400 text-[10px]">⭐⭐⭐⭐⭐</div>
+                        @forelse($reviews as $review)
+                            <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($review->user->name ?? 'User') }}&background=0D8ABC&color=fff" class="w-8 h-8 rounded-full object-cover" alt="Avatar">
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-900">{{ $review->user->name ?? 'Pengguna' }}</p>
+                                            <div class="flex text-yellow-400 text-[10px]">
+                                                @for($i = 0; $i < $review->rating; $i++)
+                                                    ⭐
+                                                @endfor
+                                            </div>
+                                        </div>
                                     </div>
+                                    <span class="text-xs text-gray-500">{{ $review->created_at->translatedFormat('d F Y') }}</span>
                                 </div>
-                                <span class="text-xs text-gray-500">14 april 1944</span>
-                            </div>
-                            <p class="text-sm text-gray-600 pl-11">Buat menumpas nazi juga bisa</p>
-                        </div>
-                        
-                        <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold">RS</div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">Red Skull</p>
-                                        <div class="flex text-yellow-400 text-[10px]">⭐⭐⭐⭐⭐</div>
+                                
+                                @if($review->comment)
+                                    <p class="text-sm text-gray-600 pl-11">{{ $review->comment }}</p>
+                                @endif
+
+                                @if($review->image)
+                                    <div class="pl-11 mt-2">
+                                        <img src="{{ asset('storage/' . $review->image) }}" class="w-20 h-20 object-cover rounded-lg border border-gray-200" alt="Foto ulasan">
                                     </div>
-                                </div>
-                                <span class="text-xs text-gray-500">14 april 1944</span>
+                                @endif
                             </div>
-                            <p class="text-sm text-gray-600 pl-11">Markas gw hancur gara gara ni tank</p>
-                        </div>
+                        @empty
+                            <div class="text-center py-6">
+                                <p class="text-gray-500 text-sm italic">Belum ada ulasan untuk barang ini.</p>
+                            </div>
+                        @endforelse
                     </div>
                     
-                    <button class="w-full mt-4 text-[#34699A] text-sm font-medium py-2 hover:bg-blue-50 rounded-lg transition">Lihat semua ❯</button>
+                    @if($totalReviews > 0)
+                        <a href="{{ route('items.reviews', $item->id) }}" class="block text-center w-full mt-4 text-[#34699A] text-sm font-medium py-2 hover:bg-blue-50 rounded-lg transition">Lihat semua ({{ $totalReviews }}) ❯</a>
+                    @endif
                 </div>
 
             </div>

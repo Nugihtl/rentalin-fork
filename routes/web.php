@@ -334,6 +334,9 @@ Route::post('/items/{item}/rent', [RentalController::class, 'store'])->name('ren
 // Rute untuk halaman checkout
 Route::get('/checkout/{rental}', [CheckoutController::class, 'index'])->name('checkout.index');
 
+//reviews
+Route::get('/items/{item}/reviews', [App\Http\Controllers\ItemController::class, 'reviews'])->name('items.reviews');
+
 /*
 |--------------------------------------------------------------------------
 | Auth Routes

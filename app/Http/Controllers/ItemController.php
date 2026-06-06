@@ -91,11 +91,14 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
-        if ($item->user_id !== Auth::id()) {
-            abort(403, 'Anda tidak memiliki akses ke barang ini.');
-        }
+        // Mengambil ulasan beserta data user pengulas (maksimal 2 ulasan terbaru)
+        $reviews = $item->reviews()->with('user')->latest()->take(2)->get();
+        
+        // Kalkulasi total ulasan dan rata-rata rating
+        $totalReviews = $item->reviews()->count();
+        $averageRating = $totalReviews > 0 ? $item->reviews()->avg('rating') : 0;
 
-        return view('pages.items.itemsDetail', compact('item'));
+        return view('pages.items.itemsDetail', compact('item', 'reviews', 'totalReviews', 'averageRating'));
     }
 
     public function edit(Item $item)
@@ -184,5 +187,28 @@ class ItemController extends Controller
             'success' => true, 
             'status' => $item->status
         ]);
+    }
+    // ─────────────────────────────────────────
+    // Menampilkan semua ulasan untuk satu barang
+    // ─────────────────────────────────────────
+    public function reviews(Item $item)
+    {
+        // Mengambil ulasan beserta data user pengulas
+        $reviews = $item->reviews()->with('user')->latest()->get();
+        
+        // Kalkulasi statistik
+        $totalReviews = $reviews->count();
+        $averageRating = $totalReviews > 0 ? $reviews->avg('rating') : 0;
+        
+        // Distribusi bintang untuk progress bar
+        $ratingCounts = [
+            5 => $reviews->where('rating', 5)->count(),
+            4 => $reviews->where('rating', 4)->count(),
+            3 => $reviews->where('rating', 3)->count(),
+            2 => $reviews->where('rating', 2)->count(),
+            1 => $reviews->where('rating', 1)->count(),
+        ];
+
+        return view('pages.reviews.ReviewBarang', compact('item', 'reviews', 'totalReviews', 'averageRating', 'ratingCounts'));
     }
 }
