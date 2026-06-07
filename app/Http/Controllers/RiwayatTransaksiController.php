@@ -748,86 +748,66 @@ class RiwayatTransaksiController extends Controller
         ]);
 
         $rental = Rental::with(['item'])->findOrFail($id);
-
         $dataPerpanjangan = session('perpanjangan_' . $rental->id);
 
         if (!$dataPerpanjangan) {
-            return redirect()
-                ->route('transaksi.formPerpanjanganSewa', $rental->id)
-                ->with('error', 'Data perpanjangan tidak ditemukan. Silakan pilih tanggal kembali.');
+            return response()->json(['error' => 'Data perpanjangan tidak ditemukan atau sesi telah kedaluwarsa.'], 400);
         }
 
+        $orderId = 'EXT-' . $rental->id . '-' . time();
+        $amountToPayNow = $dataPerpanjangan['extension_price'];
+
+        // Kalkulasi nominal DP jika menggunakan PayLater
         if ($request->metode_pembayaran === 'paylater') {
             $installmentPlan = (int) $request->installment_plan;
-
-            if (!in_array($installmentPlan, [2, 4])) {
-                return redirect()
-                    ->back()
-                    ->withInput()
-                    ->with('error', 'Pilih cicilan PayLater 2x atau 4x.');
-            }
-
-            RentalExtension::create([
-                'rental_id' => $rental->id,
-                'old_end_date' => $dataPerpanjangan['old_end_date'],
-                'new_end_date' => $dataPerpanjangan['new_end_date'],
-                'extra_days' => $dataPerpanjangan['extra_days'],
-                'extension_price' => $dataPerpanjangan['extension_price'],
-                'payment_type' => 'paylater',
-                'payment_method' => 'paylater',
-                'payment_status' => 'paylater_aktif',
-                'installment_plan' => $installmentPlan,
-                'installment_paid' => 1,
-                'installment_due_days' => 14,
-                'next_due_date' => now()->addDays(14)->format('Y-m-d'),
-            ]);
-        } else {
-            RentalExtension::create([
-                'rental_id' => $rental->id,
-                'old_end_date' => $dataPerpanjangan['old_end_date'],
-                'new_end_date' => $dataPerpanjangan['new_end_date'],
-                'extra_days' => $dataPerpanjangan['extra_days'],
-                'extension_price' => $dataPerpanjangan['extension_price'],
-                'payment_type' => 'full',
-                'payment_method' => 'qris',
-                'payment_status' => 'paid',
-                'installment_plan' => null,
-                'installment_paid' => 0,
-                'installment_due_days' => null,
-                'next_due_date' => null,
-            ]);
-
-            
+            $amountToPayNow = ceil($amountToPayNow / $installmentPlan);
         }
 
-        $rental->update([
-            'end_date' => $dataPerpanjangan['new_end_date'],
-            'status' => 'disewa',
-        ]);
-        NotificationService::send(
+        \Midtrans\Config::$serverKey = config('midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('midtrans.is_production', false);
+        \Midtrans\Config::$isSanitized = true;
+        \Midtrans\Config::$is3ds = true;
 
-    $rental->owner_id,
+        $params = [
+            'transaction_details' => [
+                'order_id' => $orderId,
+                'gross_amount' => $amountToPayNow,
+            ],
+            'customer_details' => [
+                'first_name' => \Illuminate\Support\Facades\Auth::user()->name,
+                'email' => \Illuminate\Support\Facades\Auth::user()->email,
+            ]
+        ];
 
-    "Perpanjangan Sewa",
+        try {
+            $snapToken = \Midtrans\Snap::getSnapToken($params);
 
-    "Penyewa berhasil memperpanjang masa sewa.",
+            RentalExtension::create([
+                'rental_id' => $rental->id,
+                'old_end_date' => $dataPerpanjangan['old_end_date'],
+                'new_end_date' => $dataPerpanjangan['new_end_date'],
+                'extra_days' => $dataPerpanjangan['extra_days'],
+                'extension_price' => $dataPerpanjangan['extension_price'],
+                'payment_type' => $request->metode_pembayaran === 'qris' ? 'full' : 'paylater',
+                'payment_method' => $request->metode_pembayaran,
+                'payment_status' => 'pending', // Status tetap pending hingga callback Midtrans masuk
+                'installment_plan' => $request->metode_pembayaran === 'paylater' ? $request->installment_plan : null,
+                'installment_paid' => 0,
+                'installment_due_days' => $request->metode_pembayaran === 'paylater' ? 14 : null,
+                'next_due_date' => $request->metode_pembayaran === 'paylater' ? now()->addDays(14)->format('Y-m-d') : null,
+                'order_id' => $orderId,
+                'snap_token' => $snapToken,
+            ]);
 
-    "extend",
+            // Hapus sesi setelah data diamankan di database
+            session()->forget('perpanjangan_' . $rental->id);
 
-    "berhasil",
-
-    "/riwayat-transaksi/pemilik",
-
-    $rental->id
-
-);
-
-        session()->forget('perpanjangan_' . $rental->id);
-
-        return redirect()
-            ->route('transaksi.perpanjanganBerhasil', $rental->id)
-            ->with('success_title', 'Perpanjangan Sewa Berhasil')
-            ->with('success_message', 'Perpanjangan sewa berhasil. Tanggal pengembalian sudah diperbarui.');
+            return response()->json(['snap_token' => $snapToken]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error($e->getMessage());
+            // Ubah baris ini agar menampilkan pesan error asli dari Laravel
+            return response()->json(['error' => 'Error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function simpanPerpanjanganSewa(Request $request, $id)
@@ -881,17 +861,19 @@ class RiwayatTransaksiController extends Controller
 
             RentalExtension::create([
                 'rental_id' => $rental->id,
-                'old_end_date' => $oldEndDate->format('Y-m-d'),
-                'new_end_date' => $newEndDate->format('Y-m-d'),
-                'extra_days' => $extraDays,
-                'extension_price' => $extensionPrice,
-                'payment_type' => 'paylater',
-                'payment_method' => 'paylater',
-                'payment_status' => 'paylater_aktif',
-                'installment_plan' => $installmentPlan,
-                'installment_paid' => 1,
-                'installment_due_days' => 14,
-                'next_due_date' => now()->addDays(14)->format('Y-m-d'),
+                'old_end_date' => $dataPerpanjangan['old_end_date'],
+                'new_end_date' => $dataPerpanjangan['new_end_date'],
+                'extra_days' => $dataPerpanjangan['extra_days'],
+                'extension_price' => $dataPerpanjangan['extension_price'],
+                'payment_type' => $request->metode_pembayaran === 'qris' ? 'full' : 'paylater',
+                'payment_method' => $request->metode_pembayaran,
+                'payment_status' => 'pending', 
+                'installment_plan' => $request->metode_pembayaran === 'paylater' ? $request->installment_plan : null,
+                'installment_paid' => 0,
+                'installment_due_days' => $request->metode_pembayaran === 'paylater' ? 14 : null,
+                'next_due_date' => $request->metode_pembayaran === 'paylater' ? now()->addDays(14)->format('Y-m-d') : null,
+                'order_id' => $orderId,
+                'snap_token' => $snapToken,
             ]);
         } else {
             RentalExtension::create([

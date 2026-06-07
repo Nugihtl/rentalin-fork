@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="{{ asset('assets/css/main.css') }}">
 </head>
-
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
 <body class="bg-[#F5F7FA] text-[#1E1E1E] [font-family:'Plus_Jakarta_Sans',sans-serif]">
 
 @include('layouts.partials.navbar')
@@ -55,11 +55,7 @@
     $paylater2x = $extraDays > 0 ? ceil($extensionPrice / 2) : 0;
     $paylater4x = $extraDays > 0 ? ceil($extensionPrice / 4) : 0;
 
-    $itemImage = optional($item)->image;
-    $imageUrl = $itemImage
-        ? asset('assets/products/' . $itemImage)
-        : asset('assets/products/default-product.png');
-@endphp
+@endphp  {{-- <--- INI ADALAH PENUTUP YANG HILANG SEBELUMNYA --}}
 
 <main class="w-full max-w-[435px] sm:max-w-[940px] lg:max-w-[1220px] mx-auto px-[20px] sm:px-[44px] lg:px-[66px] pt-[28px] pb-[70px]">
 
@@ -603,7 +599,72 @@
     }
 
     function submitMainForm() {
-        document.getElementById('mainConfirmForm').submit();
+        const selectedPayment = document.querySelector('.js-payment-option:checked');
+        if (!selectedPayment) {
+            alert('Pilih metode pembayaran terlebih dahulu.');
+            return;
+        }
+
+        let selectedTenor = null;
+        if (selectedPayment.value === 'paylater') {
+            const tenorNode = document.querySelector('.js-tenor-option:checked');
+            if (!tenorNode) {
+                alert('Pilih tenor PayLater terlebih dahulu.');
+                return;
+            }
+            selectedTenor = tenorNode.value;
+        }
+
+        // Kunci tombol untuk mencegah klik ganda
+        const confirmModal = document.getElementById('confirmModal');
+        const submitBtn = confirmModal.querySelector('button.bg-\\[\\#34699A\\]');
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Memproses...';
+
+        fetch("{{ route('transaksi.simpanPembayaranPerpanjangan', $rental->id) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-HTTP-Method-Override': 'PUT'
+            },
+            body: JSON.stringify({
+                metode_pembayaran: selectedPayment.value,
+                installment_plan: selectedTenor
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.snap_token) {
+                closeConfirmModal();
+                snap.pay(data.snap_token, {
+                    onSuccess: function(result) {
+                        window.location.href = "{{ route('transaksi.perpanjanganBerhasil', $rental->id) }}";
+                    },
+                    onPending: function(result) {
+                        window.location.href = "{{ route('riwayat.transaksi.penyewa') }}";
+                    },
+                    onError: function(result) {
+                        alert('Pembayaran gagal.');
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Ya, Bayar';
+                    },
+                    onClose: function() {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Ya, Bayar';
+                    }
+                });
+            } else {
+                alert('Kegagalan sistem: ' + (data.error || 'Token tidak valid.'));
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Ya, Bayar';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Ya, Bayar';
+        });
     }
 </script>
 
