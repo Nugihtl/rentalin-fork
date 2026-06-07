@@ -104,7 +104,7 @@ class CheckoutController extends Controller
                 'rental' => $rental,
                 'payment' => $payment,
                 'snapToken' => $payment->snap_token,
-                'total' => $payment->amount,  // ← tambahkan ini
+                'total' => $payment->amount // <--- TAMBAHKAN BARIS INI
             ]
         );
     }

@@ -386,7 +386,7 @@
                     <div class="mt-[14px] pt-[12px] border-t border-[#C3DAFE] flex flex-wrap justify-end gap-[8px]">
 
                         @if($status === 'menunggu_pembayaran')
-                            <a href="{{ route('checkout') }}"
+                            <a href="{{ route('checkout.index', $rental->id) }}"
                                class="h-[36px] px-[13px] sm:px-[16px] rounded-[7px] bg-[#34699A] text-white border border-[#34699A] text-[12px] sm:text-[13px] font-semibold flex items-center justify-center">
                                 Bayar Sekarang
                             </a>
