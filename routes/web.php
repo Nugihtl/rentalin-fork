@@ -11,6 +11,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\UlasanController;
 use App\Http\Controllers\Admin\KycAdminController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,11 +22,16 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+<<<<<<< Updated upstream
 Route::view('/chat', 'pages.chat.chat')
     ->name('chat');
 
 Route::get('/checkout/{rental}', [CheckoutController::class, 'index'])
     ->name('checkout.index');
+=======
+Route::view('/checkout', 'pages.checkout.checkout')
+    ->name('checkout');
+>>>>>>> Stashed changes
 
 Route::view('/cancel-refund', 'pages.cancel.cancel')
     ->name('cancel');
@@ -210,6 +216,18 @@ Route::prefix('transaksi/{id}')
 
     });
 
+// fitur chat
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{rentalId}', [ChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{rentalId}/send', [ChatController::class, 'send'])->name('chat.send');
+
+    // Untuk testing awal
+    Route::get('/rentals/{rentalId}/chat', [ChatController::class, 'startFromRental'])
+        ->name('chat.start.rental');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Toko
@@ -323,7 +341,7 @@ Route::post(
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::view('/dashboard', 'dashboard')
+    Route::view('/dashboard', 'home')
         ->middleware('verified')
         ->name('dashboard');
 
