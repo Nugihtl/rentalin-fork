@@ -11,8 +11,11 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\UlasanController;
 use App\Http\Controllers\Admin\KycAdminController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\GoogleController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CicilanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,16 +25,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-<<<<<<< Updated upstream
-Route::view('/chat', 'pages.chat.chat')
-    ->name('chat');
+Route::view('/checkout', 'pages.checkout.checkout')
+    ->name('checkout');
 
 Route::get('/checkout/{rental}', [CheckoutController::class, 'index'])
     ->name('checkout.index');
-=======
-Route::view('/checkout', 'pages.checkout.checkout')
-    ->name('checkout');
->>>>>>> Stashed changes
 
 Route::view('/cancel-refund', 'pages.cancel.cancel')
     ->name('cancel');
@@ -307,6 +305,8 @@ Route::prefix('store/pengaturan')
 
 Route::resource('items', ItemController::class);
 
+Route::get('/katalog', [ItemController::class, 'katalog'])->name('items.katalog');
+
 Route::patch('/items/{item}/toggle-status', [ItemController::class, 'toggleStatus'])
     ->middleware('auth')
     ->name('items.toggle-status');
@@ -354,6 +354,16 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])
         ->name('profile.destroy');
 
+    // Rute Cicilan (Paylater)
+    Route::get('/profile/cicilan', [App\Http\Controllers\CicilanController::class, 'index'])
+        ->name('profile.cicilan.index');
+        
+    Route::get('/profile/cicilan/{id}', [App\Http\Controllers\CicilanController::class, 'show'])
+        ->name('profile.cicilan.show');
+    
+    Route::post('/checkout/{rental}/process', [App\Http\Controllers\CheckoutController::class, 'processPaymentSelection'])->name('checkout.process');
+    Route::get('/checkout/cicilan/{installment}', [App\Http\Controllers\CheckoutController::class, 'installmentCheckout'])->name('checkout.installment');
+
 });
 
 /*
@@ -389,6 +399,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::patch('/kyc-toko/{id}/reject', [KycAdminController::class, 'rejectToko'])->name('admin.kyc_toko.reject');
 });
 
+// google auth
+Route::get('/auth/google',[GoogleController::class,'redirect'])
+        ->name('google.login');
+
+Route::get('/auth/google/callback',[GoogleController::class,'callback']);
+
 /*
 |--------------------------------------------------------------------------
 | Penilaian / Ulasan Penyewa
@@ -400,3 +416,37 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| Notifications 
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function(){
+
+Route::get(
+
+'/notifications',
+
+[NotificationController::class,'index']
+
+);
+
+Route::get(
+
+'/notifications/count',
+
+[NotificationController::class,'unreadCount']
+
+);
+
+Route::post(
+
+'/notifications/read-all',
+
+[NotificationController::class,'readAll']
+
+);
+
+});

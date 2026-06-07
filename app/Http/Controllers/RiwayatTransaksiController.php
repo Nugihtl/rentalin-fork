@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\NotificationService;
 use App\Models\AdditionalPayment;
 use App\Models\DamageClaim;
 use App\Models\Item;
@@ -387,6 +388,24 @@ class RiwayatTransaksiController extends Controller
             'status' => 'dibatalkan',
         ]);
 
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Pesanan Dibatalkan",
+
+    "Penyewa membatalkan pesanan.",
+
+    "cancel",
+
+    "dibatalkan",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
         if ($rental->item) {
             $rental->item->update([
                 'status' => 'available',
@@ -442,6 +461,24 @@ class RiwayatTransaksiController extends Controller
                 'accepted_checklist' => $kelengkapanDiterima,
             ]);
 
+            NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Diterima",
+
+    "Penyewa telah menerima barang.",
+
+    "receive",
+
+    "berhasil",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
             if ($rental->item) {
                 $rental->item->update([
                     'status' => 'rented',
@@ -460,6 +497,24 @@ class RiwayatTransaksiController extends Controller
             'acceptance_note' => null,
             'accepted_checklist' => $kelengkapanDiterima,
         ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Dikembalikan",
+
+    "Penyewa telah mengembalikan barang.",
+
+    "return",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
 
         if ($rental->item) {
             $rental->item->update([
@@ -509,6 +564,24 @@ class RiwayatTransaksiController extends Controller
             'return_note' => null,
             'tenant_return_checklist' => $request->input('kelengkapan_dikembalikan', []),
         ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Dikembalikan",
+
+    "Penyewa telah mengembalikan barang.",
+
+    "return",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
 
         return redirect()
             ->route('riwayat.transaksi.penyewa')
@@ -695,12 +768,31 @@ class RiwayatTransaksiController extends Controller
                 'installment_due_days' => null,
                 'next_due_date' => null,
             ]);
+
+            
         }
 
         $rental->update([
             'end_date' => $dataPerpanjangan['new_end_date'],
             'status' => 'disewa',
         ]);
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Perpanjangan Sewa",
+
+    "Penyewa berhasil memperpanjang masa sewa.",
+
+    "extend",
+
+    "berhasil",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
 
         session()->forget('perpanjangan_' . $rental->id);
 
@@ -789,6 +881,24 @@ class RiwayatTransaksiController extends Controller
                 'next_due_date' => null,
             ]);
         }
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Permintaan Perpanjangan",
+
+    "Penyewa meminta perpanjangan sewa.",
+
+    "extend",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
 
         $rental->update([
             'end_date' => $newEndDate->format('Y-m-d'),
@@ -888,6 +998,24 @@ class RiwayatTransaksiController extends Controller
             'outgoing_checklist' => $request->input('kelengkapan_keluar', []),
         ]);
 
+        NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Barang Dikirim",
+
+    "Pemilik telah mengirim barang.",
+
+    "shipping",
+
+    "proses",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);
+
         return redirect()
             ->route('riwayat.transaksi.pemilik')
             ->with('success_title', 'Konfirmasi Penyerahan Berhasil')
@@ -936,6 +1064,24 @@ class RiwayatTransaksiController extends Controller
                 'return_note' => null,
                 'returned_checklist' => $kelengkapanKembali,
             ]);
+
+            NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Transaksi Selesai",
+
+    "Transaksi penyewaan telah selesai.",
+
+    "finish",
+
+    "selesai",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);
 
             if ($rental->item) {
                 $rental->item->update([
@@ -1019,6 +1165,24 @@ class RiwayatTransaksiController extends Controller
             ]
         );
 
+        NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Klaim Kerusakan",
+
+    "Pemilik mengajukan klaim kerusakan.",
+
+    "damage",
+
+    "baru",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);  
+
         $rental->update([
             'status' => 'kerusakan',
             'damage_description' => $description,
@@ -1085,6 +1249,24 @@ class RiwayatTransaksiController extends Controller
             'status' => 'selesai',
         ]);
 
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Klaim Disetujui",
+
+    "Penyewa menyetujui klaim kerusakan.",
+
+    "damage",
+
+    "accepted",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
         if ($rental->item) {
             $rental->item->update([
                 'status' => 'available',
@@ -1141,6 +1323,24 @@ class RiwayatTransaksiController extends Controller
         $rental->update([
             'status' => 'selesai',
         ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Tagihan Dibayar",
+
+    "Tagihan kerusakan telah dibayar.",
+
+    "payment",
+
+    "paid",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
 
         if ($rental->item) {
             $rental->item->update([
