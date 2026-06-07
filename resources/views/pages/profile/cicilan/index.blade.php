@@ -54,18 +54,33 @@
             {{-- Grid Cards --}}
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
                 @forelse($payments as $payment)
+                    {{-- Cek apakah rental ada --}}
+                    @if(!$payment->rental) @continue @endif
+
                     @php
                         $item = $payment->rental->item;
                         $owner = $payment->rental->owner;
                         $img = is_array($item->image) && count($item->image) > 0 ? $item->image[0] : $item->image;
                         $url = $img ? asset('storage/'.$img) : asset('assets/products/default-product.png');
                         
+                        // Cari cicilan yang masih aktif
                         $activeInstallment = $payment->installments->whereIn('status', ['pending', 'overdue'])->first();
                     @endphp
+
+                    {{-- FIX: Jika tab 'belum_lunas' tapi TIDAK ada cicilan aktif, JANGAN tampilkan --}}
+                    @if($tab == 'belum_lunas' && !$activeInstallment) 
+                        @continue 
+                    @endif
+
+                    {{-- FIX: Jika tab 'selesai' tapi MASIH ada cicilan aktif, JANGAN tampilkan --}}
+                    @if($tab == 'selesai' && $activeInstallment) 
+                        @continue 
+                    @endif
 
                     <div class="profile-card" style="margin: 0; padding: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <div style="font-size: 13px; font-weight: 600; color: #4b5563;">🏢 {{ $owner->name }}</div>
+                            
                             @if($tab == 'belum_lunas' && $activeInstallment)
                                 @if($activeInstallment->status == 'overdue')
                                     <span style="background-color: #FFECEF; color: #E3455D; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 99px;">Terlambat</span>
@@ -98,9 +113,9 @@
                                 <p style="font-size: 18px; font-weight: bold; margin: 0;">Rp {{ number_format($tab == 'belum_lunas' && $activeInstallment ? $activeInstallment->amount : $payment->amount, 0, ',', '.') }}</p>
                             </div>
                             @if($tab == 'belum_lunas')
-                                <a href="{{ route('profile.cicilan.show', $payment->id) }}" style="background-color: #34699A; color: white; text-decoration: none; font-size: 13px; font-weight: bold; padding: 10px 16px; border-radius: 6px; transition: 0.2s;">Bayar Sekarang</a>
+                                <a href="{{ route('profile.cicilan.show', $payment->id) }}" style="background-color: #34699A; color: white; text-decoration: none; font-size: 13px; font-weight: bold; padding: 10px 16px; border-radius: 6px;">Bayar Sekarang</a>
                             @else
-                                <a href="{{ route('profile.cicilan.show', $payment->id) }}" style="border: 1px solid #34699A; color: #34699A; text-decoration: none; font-size: 13px; font-weight: bold; padding: 10px 16px; border-radius: 6px; transition: 0.2s;">Lihat Detail</a>
+                                <a href="{{ route('profile.cicilan.show', $payment->id) }}" style="border: 1px solid #34699A; color: #34699A; text-decoration: none; font-size: 13px; font-weight: bold; padding: 10px 16px; border-radius: 6px;">Lihat Detail</a>
                             @endif
                         </div>
                     </div>

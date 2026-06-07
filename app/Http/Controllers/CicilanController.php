@@ -15,21 +15,29 @@ class CicilanController extends Controller
         $tab = $request->query('tab', 'belum_lunas');
         $user = Auth::user();
 
-        // 1. Query Pembayaran Paylater milik User
         $query = Payment::where('payment_type', 'paylater')
             ->whereHas('rental', function($q) use ($user) {
                 $q->where('tenant_id', $user->id);
-            })
-            ->with(['rental.item', 'rental.owner', 'installments']);
+            });
 
-        // 2. Filter Tab
+        // Filter berdasarkan keberadaan cicilan aktif
         if ($tab === 'selesai') {
-            $payments = $query->where('payment_status', 'paid')->get();
+            // Cicilan selesai = tidak ada installment pending/overdue
+            $payments = $query->whereDoesntHave('installments', function($q) {
+                $q->whereIn('status', ['pending', 'overdue']);
+            })->get();
         } else {
-            $payments = $query->whereIn('payment_status', ['pending', 'partially_paid', 'overdue'])->get();
+            // Belum lunas = HARUS ada installment pending/overdue
+            $payments = $query->whereHas('installments', function($q) {
+                $q->whereIn('status', ['pending', 'overdue']);
+            })
+            ->with(['rental.item', 'rental.owner', 'installments' => function($q) {
+                $q->orderBy('term_number', 'asc');
+            }])
+            ->get();
         }
 
-        // 3. Hitung Ringkasan (Total tagihan yang belum lunas)
+        // Hitung ringkasan tagihan berdasarkan installment aktif saja
         $totalTagihan = Installment::whereIn('status', ['pending', 'overdue'])
             ->whereHas('payment.rental', function($q) use ($user) {
                 $q->where('tenant_id', $user->id);
@@ -45,7 +53,7 @@ class CicilanController extends Controller
 
         $summary = [
             'total_tagihan' => $totalTagihan,
-            'jatuh_tempo_terdekat' => $jatuhTempoTerdekat ? Carbon::parse($jatuhTempoTerdekat)->format('d M Y') : '-',
+            'jatuh_tempo_terdekat' => $jatuhTempoTerdekat ? \Carbon\Carbon::parse($jatuhTempoTerdekat)->format('d M Y') : '-',
         ];
 
         return view('pages.profile.cicilan.index', compact('user', 'tab', 'payments', 'summary'));
