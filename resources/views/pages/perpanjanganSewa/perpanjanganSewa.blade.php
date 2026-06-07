@@ -51,11 +51,6 @@
     $pricePerDay = optional($item)->price_per_day ?? 0;
 
     $tanggalTidakTersedia = $tanggalTidakTersedia ?? [];
-
-    $itemImage = optional($item)->image;
-    $imageUrl = $itemImage
-        ? asset('assets/products/' . $itemImage)
-        : asset('assets/products/default-product.png');
 @endphp
 
 <main class="w-full max-w-[435px] sm:max-w-[940px] lg:max-w-[1220px] mx-auto px-[20px] sm:px-[44px] lg:px-[66px] pt-[28px] pb-[70px]">

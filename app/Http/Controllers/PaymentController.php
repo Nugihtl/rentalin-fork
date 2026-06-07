@@ -18,6 +18,41 @@ class PaymentController extends Controller
             
             // Jika pembayaran berhasil (settlement/capture)
             if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
+
+                // Jika pembayaran berhasil (settlement/capture)
+                
+                // -----------------------------------------------------------
+                // 1. LOGIKA UNTUK PEMBAYARAN PERPANJANGAN SEWA (TAMBAHKAN DI SINI)
+                // -----------------------------------------------------------
+                // --- LOGIKA UNTUK PEMBAYARAN PERPANJANGAN SEWA ---
+                if (str_starts_with($request->order_id, 'EXT-')) {
+                    $extension = \App\Models\RentalExtension::where('order_id', $request->order_id)->first();
+                    
+                    if ($extension && $extension->payment_status !== 'paid') {
+                        $extension->update([
+                            'payment_status' => $extension->payment_type === 'paylater' ? 'paylater_aktif' : 'paid'
+                        ]);
+                        
+                        $rental = \App\Models\Rental::find($extension->rental_id);
+                        if ($rental) {
+                            // Perbarui tanggal akhir DAN tambahkan total harga
+                            $rental->update([
+                                'end_date' => $extension->new_end_date,
+                                'total_price' => $rental->total_price + $extension->extension_price
+                            ]);
+                        }
+                    }
+                    return response()->json(['message' => 'Notifikasi perpanjangan berhasil diproses']);
+                }
+                // --- AKHIR LOGIKA PERPANJANGAN ---
+                // -----------------------------------------------------------
+                
+
+                // 2. Ekstrak ID Rental dari order_id (Format: RENTAL-{id}-TERM-{term}-{time})
+                preg_match('/RENTAL-(\d+)/', $request->order_id, $rentalMatches);
+                if (!isset($rentalMatches[1])) {
+                    return response()->json(['message' => 'Format order_id tidak dikenali']);
+                }
                 
                 // 1. Ekstrak ID Rental dari order_id (Format: RENTAL-{id}-TERM-{term}-{time})
                 preg_match('/RENTAL-(\d+)/', $request->order_id, $rentalMatches);
