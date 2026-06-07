@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RentalController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\UlasanController;
+use App\Http\Controllers\Admin\KycAdminController;
 
 
 /*
@@ -367,3 +368,16 @@ use App\Http\Controllers\PaymentController;
 
 Route::post('/midtrans/callback', [PaymentController::class, 'callback'])
     ->name('midtrans.callback');
+
+//bagian admin
+Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    // Rute KYC User
+    Route::get('/kyc-user', [KycAdminController::class, 'userIndex'])->name('admin.kyc_user.index');
+    Route::patch('/kyc-user/{id}/approve', [KycAdminController::class, 'approveUser'])->name('admin.kyc_user.approve');
+    Route::patch('/kyc-user/{id}/reject', [KycAdminController::class, 'rejectUser'])->name('admin.kyc_user.reject');
+
+    // Rute KYC Toko
+    Route::get('/kyc-toko', [KycAdminController::class, 'tokoIndex'])->name('admin.kyc_toko.index');
+    Route::patch('/kyc-toko/{id}/approve', [KycAdminController::class, 'approveToko'])->name('admin.kyc_toko.approve');
+    Route::patch('/kyc-toko/{id}/reject', [KycAdminController::class, 'rejectToko'])->name('admin.kyc_toko.reject');
+});
