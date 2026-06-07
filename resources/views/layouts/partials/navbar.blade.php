@@ -240,7 +240,7 @@ if (auth()->check()) {
             🕘 Riwayat
         </a>
 
-        <a href="#">
+        <a href="{{ route('profile.cicilan.index') }}">
             💳 Cicilan
         </a>
 
