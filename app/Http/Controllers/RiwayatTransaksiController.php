@@ -1,0 +1,1338 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\NotificationService;
+use App\Models\AdditionalPayment;
+use App\Models\DamageClaim;
+use App\Models\Item;
+use App\Models\Rental;
+use App\Models\RentalCancellation;
+use App\Models\RentalDocument;
+use App\Models\RentalExtension;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+
+class RiwayatTransaksiController extends Controller
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Status Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    private function filtersPenyewa(): array
+    {
+        return [
+            'semua' => 'Semua',
+            'diproses' => 'Diproses',
+            'disewa' => 'Disewa',
+            'pengembalian' => 'Pengembalian',
+            'selesai' => 'Selesai',
+            'bermasalah' => 'Bermasalah',
+        ];
+    }
+
+    private function labelStatusPenyewa(string $status): string
+    {
+        return match ($status) {
+            'menunggu_pembayaran' => 'Menunggu Pembayaran',
+            'pesanan_masuk' => 'Diproses',
+            'dikirim' => 'Dikirim',
+            'menunggu_penerimaan' => 'Menunggu Penerimaan',
+            'disewa' => 'Disewa',
+            'pengembalian' => 'Pengembalian',
+            'kerusakan' => 'Kerusakan',
+            'dibatalkan' => 'Dibatalkan',
+            'belum_dikembalikan' => 'Belum Dikembalikan',
+            'selesai' => 'Selesai',
+            default => 'Diproses',
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Status Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    private function filtersPemilik(): array
+    {
+        return [
+            'semua' => 'Semua',
+            'pesanan_masuk' => 'Pesanan Masuk',
+            'disewa' => 'Disewa',
+            'pengembalian' => 'Pengembalian',
+            'selesai' => 'Selesai',
+            'bermasalah' => 'Bermasalah',
+        ];
+    }
+
+    private function labelStatusPemilik(string $status): string
+    {
+        return match ($status) {
+            'pesanan_masuk' => 'Pesanan Masuk',
+            'dikirim' => 'Dikirim',
+            'menunggu_penerimaan' => 'Menunggu Penerimaan',
+            'disewa' => 'Disewa',
+            'pengembalian' => 'Pengembalian',
+            'kerusakan' => 'Kerusakan',
+            'dibatalkan' => 'Dibatalkan',
+            'belum_dikembalikan' => 'Belum Dikembalikan',
+            'selesai' => 'Selesai',
+            default => 'Pesanan Masuk',
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Rental dengan Relasi
+    |--------------------------------------------------------------------------
+    */
+
+    private function queryRentalDenganRelasi()
+    {
+        return Rental::with([
+            'item',
+            'owner',
+            'tenant',
+            'payment',
+            'documents',
+            'damageClaim',
+            'extensions',
+            'latestExtension',
+            'additionalPayments',
+            'cancellation',
+        ])->latest();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ambil Kelengkapan Barang dari Item
+    |--------------------------------------------------------------------------
+    */
+
+    private function ambilKelengkapanBarang(Rental $rental): array
+    {
+        $kelengkapan = optional($rental->item)->kelengkapan;
+
+        if (!$kelengkapan) {
+            return [];
+        }
+
+        if (is_array($kelengkapan)) {
+            return array_values(array_filter(array_map('trim', $kelengkapan)));
+        }
+
+        $decoded = json_decode($kelengkapan, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return array_values(array_filter(array_map('trim', $decoded)));
+        }
+
+        return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $kelengkapan))));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Simpan Dokumentasi Rental
+    |--------------------------------------------------------------------------
+    */
+
+    private function simpanDokumenRental(Request $request, Rental $rental, string $process): void
+    {
+        if (!$request->hasFile('foto_bukti')) {
+            return;
+        }
+
+        foreach ($request->file('foto_bukti') as $file) {
+            $path = $file->store('rental-documents', 'public');
+
+            RentalDocument::create([
+                'rental_id' => $rental->id,
+                'process' => $process,
+                'image' => $path,
+            ]);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Riwayat Transaksi Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    public function penyewa(Request $request)
+    {
+        $statusAktif = $request->query('status', 'semua');
+        $filters = $this->filtersPenyewa();
+
+        $query = $this->queryRentalDenganRelasi();
+
+        if ($statusAktif !== 'semua') {
+            if ($statusAktif === 'diproses') {
+                $query->where('status', 'pesanan_masuk');
+            } elseif ($statusAktif === 'bermasalah') {
+                $query->whereIn('status', [
+                    'belum_dikembalikan',
+                    'kerusakan',
+                    'dibatalkan',
+                ]);
+            } else {
+                $query->where('status', $statusAktif);
+            }
+        }
+
+        $rentals = $query->paginate(5)->withQueryString();
+
+        return view('pages.transactions.transactions-history.riwayatTransaksiPenyewa', compact(
+            'rentals',
+            'filters',
+            'statusAktif'
+        ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Riwayat Transaksi Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    public function pemilik(Request $request)
+    {
+        $statusAktif = $request->query('status', 'semua');
+        $filters = $this->filtersPemilik();
+
+        $query = $this->queryRentalDenganRelasi()
+            ->where('status', '!=', 'menunggu_pembayaran');
+
+        if ($statusAktif !== 'semua') {
+            if ($statusAktif === 'pesanan_masuk') {
+                $query->where('status', 'pesanan_masuk');
+            } elseif ($statusAktif === 'bermasalah') {
+                $query->whereIn('status', [
+                    'belum_dikembalikan',
+                    'kerusakan',
+                    'dibatalkan',
+                ]);
+            } else {
+                $query->where('status', $statusAktif);
+            }
+        }
+
+        $rentals = $query->paginate(5)->withQueryString();
+
+        return view('pages.transactions.transactions-history.riwayatTransaksiPemilik', compact(
+            'rentals',
+            'filters',
+            'statusAktif'
+        ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Konfirmasi Pembayaran Awal
+    |--------------------------------------------------------------------------
+    */
+
+    public function formKonfirmasiPembayaran($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        if ($rental->status !== 'menunggu_pembayaran') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Pembayaran hanya bisa dilakukan untuk transaksi yang menunggu pembayaran.');
+        }
+
+        return view('pages.payment.konfirmasiPembayaran', compact('rental'));
+    }
+
+    public function simpanKonfirmasiPembayaran(Request $request, $id)
+    {
+        $request->validate([
+            'payment_type' => 'required|in:full,paylater',
+            'payment_method' => 'required|in:qris,paylater',
+            'installment_plan' => 'nullable|in:2,4',
+        ]);
+
+        $rental = Rental::with('payment')->findOrFail($id);
+
+        if ($rental->status !== 'menunggu_pembayaran') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Transaksi ini sudah tidak berada pada status menunggu pembayaran.');
+        }
+
+        if ($request->payment_type === 'paylater') {
+            $installmentPlan = (int) $request->installment_plan;
+
+            if (!in_array($installmentPlan, [2, 4])) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Pilih cicilan PayLater 2x atau 4x.');
+            }
+
+            $rental->payment()->updateOrCreate(
+                ['rental_id' => $rental->id],
+                [
+                    'payment_method' => 'PayLater',
+                    'payment_type' => 'paylater',
+                    'installment_plan' => $installmentPlan,
+                    'installment_paid' => 1,
+                    'installment_due_days' => 14,
+                    'next_due_date' => now()->addDays(14)->format('Y-m-d'),
+                    'amount' => $rental->total_price,
+                    'status' => 'paid',
+                    'payment_status' => 'partially_paid',
+                ]
+            );
+        } else {
+            $rental->payment()->updateOrCreate(
+                ['rental_id' => $rental->id],
+                [
+                    'payment_method' => 'QRIS',
+                    'payment_type' => 'full',
+                    'installment_plan' => null,
+                    'installment_paid' => 0,
+                    'installment_due_days' => null,
+                    'next_due_date' => null,
+                    'amount' => $rental->total_price,
+                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                ]
+            );
+        }
+
+        $rental->update([
+            'status' => 'pesanan_masuk',
+        ]);
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Pembayaran Berhasil')
+            ->with('success_message', 'Pembayaran berhasil dikonfirmasi. Pesanan sedang diproses.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Detail Transaksi
+    |--------------------------------------------------------------------------
+    */
+
+    public function detail($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        return view('pages.transactions.transactions-detail.detailTransaksi', compact('rental'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pembatalan Pesanan
+    |--------------------------------------------------------------------------
+    */
+
+    public function formBatalkanPesanan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        if ($rental->status !== 'menunggu_pembayaran') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Pesanan hanya bisa dibatalkan sebelum pembayaran dilakukan.');
+        }
+
+        $refund = [
+            'total_harga' => (float) ($rental->total_price ?? 0),
+            'deposit' => 0,
+            'potongan_pembatalan' => 0,
+            'refund_amount' => 0,
+            'keterangan' => 'Pesanan belum dibayar, sehingga tidak ada dana yang perlu dikembalikan.',
+        ];
+
+        return view('pages.cancel.cancelRental', compact(
+            'rental',
+            'refund'
+        ));
+    }
+
+    public function simpanBatalkanPesanan(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string',
+            'note' => 'nullable|string',
+        ]);
+
+        $rental = Rental::with(['payment', 'item'])->findOrFail($id);
+
+        if ($rental->status !== 'menunggu_pembayaran') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Pesanan hanya bisa dibatalkan sebelum pembayaran dilakukan.');
+        }
+
+        RentalCancellation::updateOrCreate(
+            ['rental_id' => $rental->id],
+            [
+                'cancelled_by' => 'penyewa',
+                'reason' => $request->reason,
+                'note' => $request->note,
+                'refund_amount' => 0,
+                'refund_status' => 'tidak_ada_refund',
+            ]
+        );
+
+        $rental->update([
+            'status' => 'dibatalkan',
+        ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Pesanan Dibatalkan",
+
+    "Penyewa membatalkan pesanan.",
+
+    "cancel",
+
+    "dibatalkan",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        if ($rental->item) {
+            $rental->item->update([
+                'status' => 'available',
+            ]);
+        }
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Pesanan Dibatalkan')
+            ->with('success_message', 'Pesanan berhasil dibatalkan. Karena pesanan belum dibayar, tidak ada pengembalian dana.');
+    }  
+    /*
+    |--------------------------------------------------------------------------
+    | Form Konfirmasi Penerimaan Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    public function formKonfirmasiPenerimaan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+        $kelengkapanBarang = $this->ambilKelengkapanBarang($rental);
+
+        return view('pages.confirmation.konfirmasiPenerimaan', compact(
+            'rental',
+            'kelengkapanBarang'
+        ));
+    }
+
+    public function simpanKonfirmasiPenerimaan(Request $request, $id)
+    {
+        $request->validate([
+            'acceptance_complete' => 'required|in:ya,tidak',
+
+            'kelengkapan' => 'nullable|array',
+            'kelengkapan.*' => 'nullable|string',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::with('item')->findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'tenant_acceptance');
+
+        $penerimaanLengkap = $request->input('acceptance_complete');
+        $kelengkapanDiterima = $request->input('kelengkapan', []);
+
+        if ($penerimaanLengkap === 'ya') {
+            $rental->update([
+                'status' => 'disewa',
+                'acceptance_complete' => true,
+                'acceptance_note' => null,
+                'accepted_checklist' => $kelengkapanDiterima,
+            ]);
+
+            NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Diterima",
+
+    "Penyewa telah menerima barang.",
+
+    "receive",
+
+    "berhasil",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+            if ($rental->item) {
+                $rental->item->update([
+                    'status' => 'rented',
+                ]);
+            }
+
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('success_title', 'Konfirmasi Penerimaan Berhasil')
+                ->with('success_message', 'Penerimaan berhasil dikonfirmasi. Status transaksi berubah menjadi Disewa.');
+        }
+
+        $rental->update([
+            'status' => 'pengembalian',
+            'acceptance_complete' => false,
+            'acceptance_note' => null,
+            'accepted_checklist' => $kelengkapanDiterima,
+        ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Dikembalikan",
+
+    "Penyewa telah mengembalikan barang.",
+
+    "return",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        if ($rental->item) {
+            $rental->item->update([
+                'status' => 'rented',
+            ]);
+        }
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Penerimaan Tidak Lengkap')
+            ->with('success_message', 'Barang tidak lengkap. Transaksi dialihkan ke proses pengembalian.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Pesanan Dikembalikan Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    public function formPesananDikembalikan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+        $kelengkapanBarang = $this->ambilKelengkapanBarang($rental);
+
+        return view('pages.confirmation.pesananDikembalikan', compact(
+            'rental',
+            'kelengkapanBarang'
+        ));
+    }
+
+    public function simpanPesananDikembalikan(Request $request, $id)
+    {
+        $request->validate([
+            'kelengkapan_dikembalikan' => 'nullable|array',
+            'kelengkapan_dikembalikan.*' => 'nullable|string',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'tenant_return');
+
+        $rental->update([
+            'status' => 'pengembalian',
+            'return_note' => null,
+            'tenant_return_checklist' => $request->input('kelengkapan_dikembalikan', []),
+        ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Barang Dikembalikan",
+
+    "Penyewa telah mengembalikan barang.",
+
+    "return",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Pengembalian Barang Berhasil')
+            ->with('success_message', 'Pesanan berhasil ditandai dikembalikan. Menunggu konfirmasi pemilik.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Perpanjangan Sewa
+    |--------------------------------------------------------------------------
+    */
+
+    private function ambilTanggalTidakTersedia(Rental $rental): array
+    {
+        $tanggalTidakTersedia = [];
+
+        $rentalsLain = Rental::where('item_id', $rental->item_id)
+            ->where('id', '!=', $rental->id)
+            ->whereIn('status', [
+                'pesanan_masuk',
+                'dikirim',
+                'menunggu_penerimaan',
+                'disewa',
+            ])
+            ->get();
+
+        foreach ($rentalsLain as $booking) {
+            if (!$booking->start_date || !$booking->end_date) {
+                continue;
+            }
+
+            $start = Carbon::parse($booking->start_date);
+            $end = Carbon::parse($booking->end_date);
+
+            while ($start->lte($end)) {
+                $tanggalTidakTersedia[] = $start->format('Y-m-d');
+                $start->addDay();
+            }
+        }
+
+        return array_values(array_unique($tanggalTidakTersedia));
+    }
+
+    public function formPerpanjanganSewa($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        if ($rental->status !== 'disewa') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Perpanjangan hanya bisa dilakukan saat barang sedang disewa.');
+        }
+
+        $tanggalTidakTersedia = $this->ambilTanggalTidakTersedia($rental);
+
+        return view('pages.perpanjanganSewa.perpanjanganSewa', compact(
+            'rental',
+            'tanggalTidakTersedia'
+        ));
+    }
+
+    public function lanjutPembayaranPerpanjangan(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal_selesai_baru' => 'required|date',
+        ]);
+
+        $rental = Rental::with(['item', 'payment'])->findOrFail($id);
+
+        if ($rental->status !== 'disewa') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Perpanjangan hanya bisa dilakukan saat status transaksi Disewa.');
+        }
+
+        $tanggalTidakTersedia = $this->ambilTanggalTidakTersedia($rental);
+
+        if (in_array($request->tanggal_selesai_baru, $tanggalTidakTersedia)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Tanggal yang dipilih tidak tersedia.');
+        }
+
+        $oldEndDate = Carbon::parse($rental->end_date);
+        $newEndDate = Carbon::parse($request->tanggal_selesai_baru);
+
+        if ($newEndDate->lte($oldEndDate)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Tanggal selesai baru harus lebih besar dari tanggal selesai saat ini.');
+        }
+
+        $extraDays = $oldEndDate->diffInDays($newEndDate);
+        $pricePerDay = optional($rental->item)->price_per_day ?? 0;
+        $extensionPrice = $extraDays * $pricePerDay;
+
+        session([
+            'perpanjangan_' . $rental->id => [
+                'old_end_date' => $oldEndDate->format('Y-m-d'),
+                'new_end_date' => $newEndDate->format('Y-m-d'),
+                'extra_days' => $extraDays,
+                'extension_price' => $extensionPrice,
+            ],
+        ]);
+
+        return redirect()
+            ->route('transaksi.formPembayaranPerpanjangan', $rental->id);
+    }
+
+    public function formPembayaranPerpanjangan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        $dataPerpanjangan = session('perpanjangan_' . $rental->id);
+
+        if (!$dataPerpanjangan) {
+            return redirect()
+                ->route('transaksi.formPerpanjanganSewa', $rental->id)
+                ->with('error', 'Silakan pilih tanggal perpanjangan terlebih dahulu.');
+        }
+
+        return view('pages.perpanjanganSewa.pembayaranPerpanjangan', compact(
+            'rental',
+            'dataPerpanjangan'
+        ));
+    }
+
+    public function simpanPembayaranPerpanjangan(Request $request, $id)
+    {
+        $request->validate([
+            'metode_pembayaran' => 'required|in:qris,paylater',
+            'installment_plan' => 'nullable|in:2,4',
+        ]);
+
+        $rental = Rental::with(['item'])->findOrFail($id);
+        $dataPerpanjangan = session('perpanjangan_' . $rental->id);
+
+        if (!$dataPerpanjangan) {
+            return response()->json(['error' => 'Data perpanjangan tidak ditemukan atau sesi telah kedaluwarsa.'], 400);
+        }
+
+        $orderId = 'EXT-' . $rental->id . '-' . time();
+        $amountToPayNow = $dataPerpanjangan['extension_price'];
+
+        // Kalkulasi nominal DP jika menggunakan PayLater
+        if ($request->metode_pembayaran === 'paylater') {
+            $installmentPlan = (int) $request->installment_plan;
+            $amountToPayNow = ceil($amountToPayNow / $installmentPlan);
+        }
+
+        \Midtrans\Config::$serverKey = config('midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('midtrans.is_production', false);
+        \Midtrans\Config::$isSanitized = true;
+        \Midtrans\Config::$is3ds = true;
+
+        $params = [
+            'transaction_details' => [
+                'order_id' => $orderId,
+                'gross_amount' => $amountToPayNow,
+            ],
+            'customer_details' => [
+                'first_name' => \Illuminate\Support\Facades\Auth::user()->name,
+                'email' => \Illuminate\Support\Facades\Auth::user()->email,
+            ]
+        ];
+
+        try {
+            $snapToken = \Midtrans\Snap::getSnapToken($params);
+
+            RentalExtension::create([
+                'rental_id' => $rental->id,
+                'old_end_date' => $dataPerpanjangan['old_end_date'],
+                'new_end_date' => $dataPerpanjangan['new_end_date'],
+                'extra_days' => $dataPerpanjangan['extra_days'],
+                'extension_price' => $dataPerpanjangan['extension_price'],
+                'payment_type' => $request->metode_pembayaran === 'qris' ? 'full' : 'paylater',
+                'payment_method' => $request->metode_pembayaran,
+                'payment_status' => 'pending', // Status tetap pending hingga callback Midtrans masuk
+                'installment_plan' => $request->metode_pembayaran === 'paylater' ? $request->installment_plan : null,
+                'installment_paid' => 0,
+                'installment_due_days' => $request->metode_pembayaran === 'paylater' ? 14 : null,
+                'next_due_date' => $request->metode_pembayaran === 'paylater' ? now()->addDays(14)->format('Y-m-d') : null,
+                'order_id' => $orderId,
+                'snap_token' => $snapToken,
+            ]);
+
+            // Hapus sesi setelah data diamankan di database
+            session()->forget('perpanjangan_' . $rental->id);
+
+            return response()->json(['snap_token' => $snapToken]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error($e->getMessage());
+            // Ubah baris ini agar menampilkan pesan error asli dari Laravel
+            return response()->json(['error' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function simpanPerpanjanganSewa(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal_selesai_baru' => 'required|date',
+            'metode_pembayaran' => 'required|in:qris,paylater',
+            'installment_plan' => 'nullable|in:2,4',
+        ]);
+
+        $rental = Rental::with(['item', 'payment'])->findOrFail($id);
+
+        if ($rental->status !== 'disewa') {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Perpanjangan hanya bisa dilakukan saat status transaksi Disewa.');
+        }
+
+        $tanggalTidakTersedia = $this->ambilTanggalTidakTersedia($rental);
+
+        if (in_array($request->tanggal_selesai_baru, $tanggalTidakTersedia)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Tanggal yang dipilih tidak tersedia.');
+        }
+
+        $oldEndDate = Carbon::parse($rental->end_date);
+        $newEndDate = Carbon::parse($request->tanggal_selesai_baru);
+
+        if ($newEndDate->lte($oldEndDate)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Tanggal selesai baru harus lebih besar dari tanggal selesai saat ini.');
+        }
+
+        $extraDays = $oldEndDate->diffInDays($newEndDate);
+        $pricePerDay = optional($rental->item)->price_per_day ?? 0;
+        $extensionPrice = $extraDays * $pricePerDay;
+
+        if ($request->metode_pembayaran === 'paylater') {
+            $installmentPlan = (int) $request->installment_plan;
+
+            if (!in_array($installmentPlan, [2, 4])) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Pilih cicilan PayLater 2x atau 4x.');
+            }
+
+            RentalExtension::create([
+                'rental_id' => $rental->id,
+                'old_end_date' => $dataPerpanjangan['old_end_date'],
+                'new_end_date' => $dataPerpanjangan['new_end_date'],
+                'extra_days' => $dataPerpanjangan['extra_days'],
+                'extension_price' => $dataPerpanjangan['extension_price'],
+                'payment_type' => $request->metode_pembayaran === 'qris' ? 'full' : 'paylater',
+                'payment_method' => $request->metode_pembayaran,
+                'payment_status' => 'pending', 
+                'installment_plan' => $request->metode_pembayaran === 'paylater' ? $request->installment_plan : null,
+                'installment_paid' => 0,
+                'installment_due_days' => $request->metode_pembayaran === 'paylater' ? 14 : null,
+                'next_due_date' => $request->metode_pembayaran === 'paylater' ? now()->addDays(14)->format('Y-m-d') : null,
+                'order_id' => $orderId,
+                'snap_token' => $snapToken,
+            ]);
+        } else {
+            RentalExtension::create([
+                'rental_id' => $rental->id,
+                'old_end_date' => $oldEndDate->format('Y-m-d'),
+                'new_end_date' => $newEndDate->format('Y-m-d'),
+                'extra_days' => $extraDays,
+                'extension_price' => $extensionPrice,
+                'payment_type' => 'full',
+                'payment_method' => 'qris',
+                'payment_status' => 'paid',
+                'installment_plan' => null,
+                'installment_paid' => 0,
+                'installment_due_days' => null,
+                'next_due_date' => null,
+            ]);
+        }
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Permintaan Perpanjangan",
+
+    "Penyewa meminta perpanjangan sewa.",
+
+    "extend",
+
+    "baru",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        $rental->update([
+            'end_date' => $newEndDate->format('Y-m-d'),
+            'status' => 'disewa',
+        ]);
+
+        return redirect()
+            ->route('transaksi.perpanjanganBerhasil', $rental->id)
+            ->with('success_title', 'Perpanjangan Sewa Berhasil')
+            ->with('success_message', 'Perpanjangan sewa berhasil. Tanggal pengembalian sudah diperbarui.');
+    }
+
+    public function perpanjanganBerhasil($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        return view('pages.perpanjanganSewa.perpanjanganBerhasil', compact('rental'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Konfirmasi Pengiriman Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    public function formKonfirmasiPengiriman($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+        $kelengkapanBarang = $this->ambilKelengkapanBarang($rental);
+
+        return view('pages.confirmation.konfirmasiPengiriman', compact(
+            'rental',
+            'kelengkapanBarang'
+        ));
+    }
+
+    public function simpanKonfirmasiPengiriman(Request $request, $id)
+    {
+        $request->validate([
+            'nomor_resi' => 'nullable|string|max:100',
+
+            'kelengkapan_keluar' => 'nullable|array',
+            'kelengkapan_keluar.*' => 'nullable|string',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'owner_shipping');
+
+        $rental->update([
+            'status' => 'menunggu_penerimaan',
+            'outgoing_checklist' => $request->input('kelengkapan_keluar', []),
+        ]);
+
+        return redirect()
+            ->route('riwayat.transaksi.pemilik')
+            ->with('success_title', 'Konfirmasi Pengiriman Berhasil')
+            ->with('success_message', 'Pengiriman berhasil dikonfirmasi. Menunggu penerimaan dari penyewa.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Konfirmasi Penyerahan Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    public function formKonfirmasiPenyerahan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+        $kelengkapanBarang = $this->ambilKelengkapanBarang($rental);
+
+        return view('pages.confirmation.konfirmasiPenyerahan', compact(
+            'rental',
+            'kelengkapanBarang'
+        ));
+    }
+
+    public function simpanKonfirmasiPenyerahan(Request $request, $id)
+    {
+        $request->validate([
+            'kelengkapan_keluar' => 'nullable|array',
+            'kelengkapan_keluar.*' => 'nullable|string',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'owner_handover');
+
+        $rental->update([
+            'status' => 'menunggu_penerimaan',
+            'outgoing_checklist' => $request->input('kelengkapan_keluar', []),
+        ]);
+
+        NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Barang Dikirim",
+
+    "Pemilik telah mengirim barang.",
+
+    "shipping",
+
+    "proses",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);
+
+        return redirect()
+            ->route('riwayat.transaksi.pemilik')
+            ->with('success_title', 'Konfirmasi Penyerahan Berhasil')
+            ->with('success_message', 'Penyerahan berhasil dikonfirmasi. Menunggu penerimaan dari penyewa.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Konfirmasi Pengembalian Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    public function formKonfirmasiPengembalian($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+        $kelengkapanBarang = $this->ambilKelengkapanBarang($rental);
+
+        return view('pages.confirmation.konfirmasiPengembalian', compact(
+            'rental',
+            'kelengkapanBarang'
+        ));
+    }
+
+    public function simpanKonfirmasiPengembalian(Request $request, $id)
+    {
+        $request->validate([
+            'kondisi_barang' => 'required|in:aman,rusak',
+
+            'kelengkapan_kembali' => 'nullable|array',
+            'kelengkapan_kembali.*' => 'nullable|string',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::with('item')->findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'owner_return_check');
+
+        $kondisiBarang = $request->input('kondisi_barang');
+        $kelengkapanKembali = $request->input('kelengkapan_kembali', []);
+
+        if ($kondisiBarang === 'aman') {
+            $rental->update([
+                'status' => 'selesai',
+                'return_note' => null,
+                'returned_checklist' => $kelengkapanKembali,
+            ]);
+
+            NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Transaksi Selesai",
+
+    "Transaksi penyewaan telah selesai.",
+
+    "finish",
+
+    "selesai",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);
+
+            if ($rental->item) {
+                $rental->item->update([
+                    'status' => 'available',
+                ]);
+            }
+
+            return redirect()
+                ->route('riwayat.transaksi.pemilik')
+                ->with('success_title', 'Konfirmasi Pengembalian Berhasil')
+                ->with('success_message', 'Pengembalian berhasil dikonfirmasi. Transaksi selesai.');
+        }
+
+        $rental->update([
+            'status' => 'kerusakan',
+            'return_note' => null,
+            'returned_checklist' => $kelengkapanKembali,
+        ]);
+
+        return redirect()
+            ->route('transaksi.formPengajuanKerusakan', $rental->id)
+            ->with('success_title', 'Barang Bermasalah')
+            ->with('success_message', 'Barang bermasalah. Silakan ajukan klaim kerusakan.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form Pengajuan Kerusakan Pemilik
+    |--------------------------------------------------------------------------
+    */
+
+    public function formPengajuanKerusakan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        return view('pages.damage-submission.pengajuanKerusakan', compact('rental'));
+    }
+
+    public function simpanPengajuanKerusakan(Request $request, $id)
+    {
+        $request->validate([
+            'damage_type' => 'required_without:jenis_kerusakan|nullable|string',
+            'damage_part' => 'required_without:bagian_rusak|nullable|string',
+            'description' => 'required_without:deskripsi|nullable|string',
+            'repair_fee' => 'nullable|numeric|min:0',
+
+            'jenis_kerusakan' => 'nullable|string',
+            'bagian_rusak' => 'nullable|string',
+            'deskripsi' => 'nullable|string',
+            'biaya_perbaikan' => 'nullable|numeric|min:0',
+
+            'foto_bukti' => 'required|array|min:3',
+            'foto_bukti.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        $rental = Rental::findOrFail($id);
+
+        $this->simpanDokumenRental($request, $rental, 'damage_claim');
+
+        $damageType = $request->input('damage_type')
+            ?? $request->input('jenis_kerusakan');
+
+        $damagePart = $request->input('damage_part')
+            ?? $request->input('bagian_rusak');
+
+        $description = $request->input('description')
+            ?? $request->input('deskripsi');
+
+        $repairFee = $request->input('repair_fee')
+            ?? $request->input('biaya_perbaikan')
+            ?? 0;
+
+        DamageClaim::updateOrCreate(
+            ['rental_id' => $rental->id],
+            [
+                'damage_type' => $damageType,
+                'damage_part' => $damagePart,
+                'description' => $description,
+                'repair_fee' => $repairFee,
+                'status' => 'submitted',
+            ]
+        );
+
+        NotificationService::send(
+
+    $rental->tenant_id,
+
+    "Klaim Kerusakan",
+
+    "Pemilik mengajukan klaim kerusakan.",
+
+    "damage",
+
+    "baru",
+
+    "/riwayat-transaksi/penyewa",
+
+    $rental->id
+
+);  
+
+        $rental->update([
+            'status' => 'kerusakan',
+            'damage_description' => $description,
+            'damage_fee' => $repairFee,
+        ]);
+
+        return redirect()
+            ->route('transaksi.lihatKlaim', $rental->id)
+            ->with('success_title', 'Klaim Kerusakan Berhasil Diajukan')
+            ->with('success_message', 'Klaim kerusakan berhasil diajukan dan menunggu persetujuan penyewa.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lihat Klaim Kerusakan Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    public function lihatKlaim($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        return view('pages.damage-submission.klaimKerusakan', compact('rental'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Setujui Klaim Kerusakan Penyewa
+    |--------------------------------------------------------------------------
+    */
+
+    public function setujuiKlaim($id)
+    {
+        $rental = Rental::with(['item', 'damageClaim'])->findOrFail($id);
+
+        $deposit = 500000;
+        $damageFee = optional($rental->damageClaim)->repair_fee ?? $rental->damage_fee ?? 0;
+        $sisaTagihan = max($damageFee - $deposit, 0);
+
+        if ($rental->damageClaim) {
+            $rental->damageClaim->update([
+                'status' => 'accepted',
+            ]);
+        }
+
+        if ($sisaTagihan > 0) {
+            AdditionalPayment::updateOrCreate(
+                ['rental_id' => $rental->id],
+                [
+                    'damage_claim_id' => optional($rental->damageClaim)->id,
+                    'amount' => $sisaTagihan,
+                    'payment_method' => 'qris',
+                    'payment_status' => 'menunggu_pembayaran',
+                ]
+            );
+
+            return redirect()
+                ->route('transaksi.formPembayaranTagihanTambahan', $rental->id)
+                ->with('success_title', 'Klaim Disetujui')
+                ->with('success_message', 'Klaim disetujui. Silakan lanjutkan pembayaran tagihan tambahan.');
+        }
+
+        $rental->update([
+            'status' => 'selesai',
+        ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Klaim Disetujui",
+
+    "Penyewa menyetujui klaim kerusakan.",
+
+    "damage",
+
+    "accepted",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        if ($rental->item) {
+            $rental->item->update([
+                'status' => 'available',
+            ]);
+        }
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Klaim Kerusakan Disetujui')
+            ->with('success_message', 'Klaim kerusakan berhasil disetujui. Transaksi selesai.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pembayaran Tagihan Tambahan Kerusakan
+    |--------------------------------------------------------------------------
+    */
+
+    public function formPembayaranTagihanTambahan($id)
+    {
+        $rental = $this->queryRentalDenganRelasi()->findOrFail($id);
+
+        $additionalPayment = AdditionalPayment::where('rental_id', $rental->id)
+            ->where('payment_status', 'menunggu_pembayaran')
+            ->latest()
+            ->first();
+
+        if (!$additionalPayment) {
+            return redirect()
+                ->route('riwayat.transaksi.penyewa')
+                ->with('error', 'Tidak ada tagihan tambahan yang perlu dibayar.');
+        }
+
+        return view('pages.payment.pembayaranTagihanTambahan', compact(
+            'rental',
+            'additionalPayment'
+        ));
+    }
+
+    public function simpanPembayaranTagihanTambahan($id)
+    {
+        $rental = Rental::with('item')->findOrFail($id);
+
+        $additionalPayment = AdditionalPayment::where('rental_id', $rental->id)
+            ->where('payment_status', 'menunggu_pembayaran')
+            ->latest()
+            ->firstOrFail();
+
+        $additionalPayment->update([
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $rental->update([
+            'status' => 'selesai',
+        ]);
+
+        NotificationService::send(
+
+    $rental->owner_id,
+
+    "Tagihan Dibayar",
+
+    "Tagihan kerusakan telah dibayar.",
+
+    "payment",
+
+    "paid",
+
+    "/riwayat-transaksi/pemilik",
+
+    $rental->id
+
+);
+
+        if ($rental->item) {
+            $rental->item->update([
+                'status' => 'available',
+            ]);
+        }
+
+        return redirect()
+            ->route('riwayat.transaksi.penyewa')
+            ->with('success_title', 'Tagihan Tambahan Berhasil Dibayar')
+            ->with('success_message', 'Tagihan tambahan berhasil dibayar. Transaksi selesai.');
+    }
+}
