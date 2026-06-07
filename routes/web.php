@@ -25,8 +25,8 @@ use App\Http\Controllers\CicilanController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-Route::view('/checkout', 'pages.checkout.checkout')
-    ->name('checkout');
+Route::view('/chat', 'pages.chat.chat')
+    ->name('chat');
 
 Route::get('/checkout/{rental}', [CheckoutController::class, 'index'])
     ->name('checkout.index');
