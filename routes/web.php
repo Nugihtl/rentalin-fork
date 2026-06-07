@@ -294,7 +294,7 @@ Route::prefix('store/pengaturan')
     ->group(function () {
 
         Route::get('/ulasan', [UlasanController::class, 'index'])
-            ->name('ulasan');
+            ->name('ulasan.index');
     });
 
 /*
