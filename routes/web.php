@@ -341,7 +341,7 @@ Route::post(
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::view('/dashboard', 'home')
+    Route::get('/dashboard', [HomeController::class, 'index'])
         ->middleware('verified')
         ->name('dashboard');
 

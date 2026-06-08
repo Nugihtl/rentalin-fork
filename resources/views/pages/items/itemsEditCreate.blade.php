@@ -9,6 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F9FAFB; }
+        /* Transisi untuk area deposit agar smooth saat disembunyikan/dimunculkan */
+        #deposit-input-area { transition: all 0.3s ease-in-out; overflow: hidden; }
+        .deposit-hidden { opacity: 0; max-height: 0; margin-bottom: 0 !important; padding-top: 0; padding-bottom: 0; border: none; }
+        .deposit-visible { opacity: 1; max-height: 150px; margin-bottom: 2rem; }
     </style>
 </head>
 <body class="text-gray-800">
@@ -154,52 +158,17 @@
                         <p class="text-xs text-gray-500 mt-0.5">Jaminan uang kembali jika barang rusak/hilang.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="has_deposit" value="1" class="sr-only peer" checked>
+                        <input type="checkbox" id="toggle-deposit" name="has_deposit" value="1" class="sr-only peer" checked>
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                 </div>
 
-                <div class="mb-8">
+                <div id="deposit-input-area" class="deposit-visible">
                     <label class="block text-base font-semibold text-gray-900 mb-2">Nominal Deposit</label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">Rp</span>
-                        <input type="number" name="deposit_amount" class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan nominal deposit" min="0" oninput="if(this.value < 0) this.value = 0;">
+                        <input type="number" id="deposit_amount" name="deposit_amount" class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan nominal deposit" min="0" oninput="if(this.value < 0) this.value = 0;">
                     </div>
-                </div>
-
-                <hr class="border-gray-100 mb-8">
-
-                <div class="mb-8">
-                    <h2 class="text-base font-semibold text-gray-900 mb-1">Kebijakan Pembatalan</h2>
-                    <p class="text-sm text-gray-500 mb-4">Tentukan batas waktu pembatalan dan persentase pengembalian dana untuk penyewa.</p>
-                    
-                    <div class="bg-gray-50 rounded-xl border border-gray-200 p-5 mb-4 relative group">
-                        <button type="button" class="absolute top-4 right-4 text-red-500 hover:text-red-700">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                        <h3 class="text-sm font-medium text-gray-900 mb-4">Aturan 1</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1.5">Pembatalan (Hari sebelum sewa)</label>
-                                <div class="relative">
-                                    <input type="number" name="cancellation_policies[0][days_before]" class="w-full pl-4 pr-12 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan batas hari" min="0" oninput="if(this.value < 0) this.value = 0;">
-                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">hari</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1.5">Persentase Refund</label>
-                                <div class="relative">
-                                    <input type="number" name="cancellation_policies[0][refund_percentage]" class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan persentase refund" min="0" max="100" oninput="if(this.value < 0) this.value = 0; if(this.value > 100) this.value = 100;">
-                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="button" class="text-blue-600 text-sm font-medium flex items-center gap-1 hover:text-blue-700">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Tambah aturan
-                    </button>
                 </div>
 
                 <hr class="border-gray-100 mb-8">
@@ -258,6 +227,23 @@
 
         document.addEventListener('DOMContentLoaded', async function() {
             
+            // --- Logika Toggle Deposit ---
+            const toggleDeposit = document.getElementById('toggle-deposit');
+            const depositArea = document.getElementById('deposit-input-area');
+            const depositInput = document.getElementById('deposit_amount');
+
+            toggleDeposit.addEventListener('change', function() {
+                if(this.checked) {
+                    depositArea.className = 'deposit-visible';
+                    depositInput.required = true;
+                } else {
+                    depositArea.className = 'deposit-hidden';
+                    depositInput.required = false;
+                    depositInput.value = ''; // Kosongkan nilai saat disembunyikan
+                }
+            });
+
+
             // --- Logika Dynamic Kelengkapan Barang ---
             const kelengkapanContainer = document.querySelector('.space-y-3.mb-4'); 
             const btnTambahKelengkapan = Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Tambah Kelengkapan'));
@@ -280,49 +266,6 @@
                     const btnHapus = e.target.closest('.btn-hapus-kelengkapan');
                     if (btnHapus) {
                         btnHapus.parentElement.remove();
-                    }
-                });
-            }
-
-            // --- Logika Dynamic Kebijakan Pembatalan ---
-            const policyContainer = document.querySelector('.bg-gray-50.rounded-xl.border').parentElement;
-            const btnTambahAturan = Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Tambah aturan'));
-            let policyCount = 1;
-
-            if (btnTambahAturan && policyContainer) {
-                btnTambahAturan.addEventListener('click', function() {
-                    const newPolicy = document.createElement('div');
-                    newPolicy.className = 'bg-gray-50 rounded-xl border border-gray-200 p-5 mb-4 relative group policy-item';
-                    newPolicy.innerHTML = `
-                        <button type="button" class="btn-hapus-aturan absolute top-4 right-4 text-red-500 hover:text-red-700">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                        <h3 class="text-sm font-medium text-gray-900 mb-4">Aturan Tambahan</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1.5">Pembatalan (Hari sebelum sewa)</label>
-                                <div class="relative">
-                                    <input type="number" name="cancellation_policies[${policyCount}][days_before]" class="w-full pl-4 pr-12 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan batas hari" min="0" oninput="if(this.value < 0) this.value = 0;">
-                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">hari</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500 mb-1.5">Persentase Refund</label>
-                                <div class="relative">
-                                    <input type="number" name="cancellation_policies[${policyCount}][refund_percentage]" class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Tentukan persentase refund" min="0" max="100" oninput="if(this.value < 0) this.value = 0; if(this.value > 100) this.value = 100;">
-                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    policyContainer.insertBefore(newPolicy, btnTambahAturan);
-                    policyCount++;
-                });
-
-                policyContainer.addEventListener('click', function(e) {
-                    const btnHapus = e.target.closest('.btn-hapus-aturan');
-                    if (btnHapus) {
-                        btnHapus.closest('.policy-item').remove();
                     }
                 });
             }

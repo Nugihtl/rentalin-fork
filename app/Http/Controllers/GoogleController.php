@@ -1,11 +1,15 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use App\Models\User; // <-- Pastikan ini ada
+use Illuminate\Support\Facades\Auth; // <-- Pastikan ini ada
+use Illuminate\Support\Str; // <-- Pastikan ini ada
 
 class GoogleController extends Controller
 {
-
     public function redirect()
     {
         return Socialite::driver('google')->redirect();
@@ -13,34 +17,28 @@ class GoogleController extends Controller
 
     public function callback()
     {
+        try {
+            $googleUser = Socialite::driver('google')->user();
 
-        $googleUser = Socialite::driver('google')->user();
+            $user = User::where('email', $googleUser->getEmail())->first();
 
-        $user = User::where('email',$googleUser->email)->first();
+            if (!$user) {
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'password' => bcrypt(Str::random(16)), 
+                    'email_verified_at' => now(), 
+                ]);
+            }
 
-        if(!$user){
+            Auth::login($user);
 
-            $user = User::create([
-                'name'=>$googleUser->name,
-                'email'=>$googleUser->email,
-                'google_id'=>$googleUser->id,
-                'avatar'=>$googleUser->avatar,
-                'password'=>bcrypt(Str::random(16))
-            ]);
+            // Arahkan ke halaman beranda/dashboard
+            return redirect()->intended('/dashboard');
 
-        }else{
-
-            $user->update([
-                'google_id'=>$googleUser->id,
-                'avatar'=>$googleUser->avatar
-            ]);
-
+        } catch (\Exception $e) {
+            // Jika terjadi error, kembali ke halaman login dan bawa pesan error
+            return redirect('/login')->with('error', 'Error: ' . $e->getMessage());
         }
-
-        Auth::login($user,true);
-
-        return redirect('/');
-
     }
-
 }
