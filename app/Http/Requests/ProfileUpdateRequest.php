@@ -18,16 +18,10 @@ class ProfileUpdateRequest extends FormRequest
 {
     return [
 
-        'first_name' => [
-            'required',
-            'string',
-            'max:255',
-        ],
-
-        'last_name' => [
-            'required',
-            'string',
-            'max:255',
+        'name' => [
+        'required',
+        'string',
+        'max:255',
         ],
 
         'email' => [
@@ -67,6 +61,13 @@ class ProfileUpdateRequest extends FormRequest
             'required',
             'string',
             'max:20',
+        ],
+
+        'avatar' => [
+        'nullable',
+        'image',
+        'mimes:jpg,jpeg,png,webp',
+        'max:2048',
         ],
     ];
 }

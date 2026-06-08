@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -25,23 +26,35 @@ class ProfileController extends Controller
      * Update the user's profile information.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-       $data = $request->validated();
+{
+    dd($request->all());
+    $data = $request->validated();
 
-if (!empty($data['first_name']) || !empty($data['last_name'])) {
-    $data['name'] = trim(
-        ($data['first_name'] ?? '') . ' ' .
-        ($data['last_name'] ?? '')
-    );
-}
-
-$request->user()->update($data);
-
-return redirect()
-    ->route('profile.edit')
-    ->with('status','profile-updated');
+    if (!empty($data['first_name']) || !empty($data['last_name'])) {
+        $data['name'] = trim(
+            ($data['first_name'] ?? '') . ' ' .
+            ($data['last_name'] ?? '')
+        );
     }
 
+    if ($request->hasFile('avatar')) {
+
+        if ($request->user()->avatar) {
+            Storage::disk('public')
+                ->delete($request->user()->avatar);
+        }
+
+        $data['avatar'] = $request
+            ->file('avatar')
+            ->store('avatars', 'public');
+    }
+
+    $request->user()->update($data);
+
+    return redirect()
+        ->route('profile.edit')
+        ->with('status', 'profile-updated');
+}
     /**
      * Delete the user's account.
      */

@@ -98,11 +98,35 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('profile.update') }}">
+            <form
+            method="POST"
+            action="{{ route('profile.update') }}"
+            enctype="multipart/form-data"> 
+
                 @csrf
                 @method('PATCH')
 
                 <div class="form-grid">
+
+                {{-- Photo Profile --}}
+                    <div class="form-group full">
+
+                        <label>Foto Profil</label>
+
+                        <input
+                            type="file"
+                            name="avatar"
+                            accept="image/*"
+                            class="editable"
+                            disabled>
+
+                        @error('avatar')
+                            <small style="color:red">
+                                {{ $message }}
+                            </small>
+                        @enderror
+
+                    </div>
 
                     {{-- Nama Lengkap (Gabungan) --}}
                     <div class="form-group full">
@@ -331,6 +355,7 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error('Error fetching cities:', error);
             citySelect.innerHTML = '<option value="">Gagal memuat data kota</option>';
         });
+
 });
 </script>
 
