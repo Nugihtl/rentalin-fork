@@ -354,7 +354,8 @@ Route::get('/checkout/cicilan/{installment}', [CheckoutController::class, 'insta
 */
 
 Route::middleware(['auth'])->group(function () {
-    Route::view('/dashboard', 'home')
+
+    Route::get('/dashboard', [HomeController::class, 'index'])
         ->middleware('verified')
         ->name('dashboard');
 
