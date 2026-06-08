@@ -1017,7 +1017,7 @@
                             </a>
                         @endif
 
-                        <a href="{{ $item ? route('items.show', $item->id) : route('items.index') }}"
+                        <a href=href="{{ $item ? route('items.show', ['item' => $item->id, 'from' => 'riwayat-transaksi']) : route('items.index') }}"
                            class="w-full h-[38px] rounded-[8px] bg-white border border-[#34699A] text-[#34699A] hover:bg-[#EAF3FF] focus:outline-none focus:ring-2 focus:ring-[#7BAFE3] focus:ring-offset-2 transition text-[12px] font-semibold flex items-center justify-center">
                             Sewa Kembali
                         </a>
